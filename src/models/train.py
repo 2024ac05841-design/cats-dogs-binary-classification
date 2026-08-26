@@ -18,8 +18,14 @@ from ..data import CatsDogsDataset, get_preprocessing_transforms
 
 logger = logging.getLogger(__name__)
 
-# Configure MLflow
-mlflow.set_experiment("cats-dogs-classification")
+# Configure MLflow - use environment variable if provided, otherwise use default
+experiment_name = os.getenv("MLFLOW_EXPERIMENT", "cats-dogs-classification")
+try:
+    mlflow.set_experiment(experiment_name)
+except Exception as e:
+    logger.warning(f"Could not set experiment '{experiment_name}': {e}. Creating new experiment.")
+    mlflow.create_experiment(experiment_name)
+    mlflow.set_experiment(experiment_name)
 
 
 class Trainer:

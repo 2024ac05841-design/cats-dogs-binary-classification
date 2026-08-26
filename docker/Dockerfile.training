@@ -8,13 +8,13 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Copy training-specific requirements (excludes inference and dev dependencies)
+COPY requirements-training.txt .
 
 # Install Python dependencies with BuildKit cache mount
 # BuildKit will cache pip packages across builds
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+    pip install -r requirements-training.txt
 
 # Copy application code
 COPY src ./src

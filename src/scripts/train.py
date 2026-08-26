@@ -15,7 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from src.models import train_model
+from src.models.train import train_multiple_models
 
 
 def main():
@@ -29,11 +29,10 @@ def main():
     )
     
     parser.add_argument(
-        '--model',
+        '--best-model-dir',
         type=str,
-        default='simple_cnn',
-        choices=['simple_cnn', 'resnet18'],
-        help='Model architecture to use'
+        default='models/best_model',
+        help='Directory to save the best trained model'
     )
     
     parser.add_argument(
@@ -57,31 +56,25 @@ def main():
         help='Learning rate'
     )
     
-    parser.add_argument(
-        '--output-path',
-        type=str,
-        default='models/model.pkl',
-        help='Path to save trained model'
-    )
-    
     args = parser.parse_args()
     
-    logger.info("Starting model training...")
-    logger.info(f"Model: {args.model}")
+    logger.info("Starting multi-model training...")
+    logger.info(f"Data directory: {args.data_dir}")
+    logger.info(f"Best model directory: {args.best_model_dir}")
     logger.info(f"Epochs: {args.epochs}")
     logger.info(f"Batch size: {args.batch_size}")
     logger.info(f"Learning rate: {args.lr}")
     
     try:
-        train_model(
+        results = train_multiple_models(
             data_dir=args.data_dir,
-            model_name=args.model,
             epochs=args.epochs,
             batch_size=args.batch_size,
             lr=args.lr,
-            save_path=args.output_path
+            best_model_dir=args.best_model_dir
         )
         logger.info("Training completed successfully!")
+        logger.info(f"Results: {results}")
     except Exception as e:
         logger.error(f"Training failed: {e}")
         raise

@@ -26,46 +26,24 @@ spec:
           serviceAccountName: training-account
           restartPolicy: OnFailure
           
-          # Init container to prepare data directories
-          initContainers:
-          - name: prepare-dirs
-            image: busybox:1.35
-            command: ['sh', '-c']
-            args:
-            - |
-              mkdir -p /data/processed/train /data/processed/val /data/processed/test
-              mkdir -p /models/best_model
-              chmod -R 777 /data /models
-            volumeMounts:
-            - name: training-data
-              mountPath: /data
-            - name: training-models
-              mountPath: /models
-          
           containers:
           - name: training-job
-            image: 172.26.195.22:5000/cats-dogs-trainer:latest
-            imagePullPolicy: Always
+            image: cats-dogs-trainer:latest
+            imagePullPolicy: Never
             
             command:
             - /bin/bash
             - -c
             - |
               cd /app
-              python src/scripts/train.py --compare-models \
-                --epochs ${EPOCHS} \
-                --batch-size ${BATCH_SIZE} \
-                --lr ${LEARNING_RATE} \
+              python src/scripts/train.py \
                 --data-dir /data/processed \
-                --best-model-dir /models/best_model
+                --best-model-dir /models/best_model \
+                --epochs 20 \
+                --batch-size 32 \
+                --lr 0.001
             
             env:
-            - name: EPOCHS
-              value: "20"
-            - name: BATCH_SIZE
-              value: "32"
-            - name: LEARNING_RATE
-              value: "0.001"
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: MLFLOW_TRACKING_URI
@@ -86,8 +64,6 @@ spec:
               mountPath: /data
             - name: training-models
               mountPath: /models
-            - name: app-code
-              mountPath: /app
           
           volumes:
           - name: training-data
@@ -96,8 +72,6 @@ spec:
           - name: training-models
             persistentVolumeClaim:
               claimName: training-models-pvc
-          - name: app-code
-            emptyDir: {}
 
 ---
 # ServiceAccount for training job
