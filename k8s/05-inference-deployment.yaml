@@ -22,7 +22,7 @@ spec:
       
       containers:
       - name: inference-service
-        image: cats-dogs-classifier:latest
+        image: cats-dogs-inference:latest
         imagePullPolicy: IfNotPresent
         
         ports:

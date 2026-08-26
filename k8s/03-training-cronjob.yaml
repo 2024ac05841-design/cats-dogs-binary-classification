@@ -44,7 +44,7 @@ spec:
           
           containers:
           - name: training-job
-            image: cats-dogs-classifier:latest
+            image: cats-dogs-trainer:latest
             imagePullPolicy: IfNotPresent
             
             command:
