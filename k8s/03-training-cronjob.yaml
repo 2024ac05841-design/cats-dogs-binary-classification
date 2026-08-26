@@ -8,7 +8,6 @@ spec:
   # Format: minute hour day month day-of-week
   # To run manually: kubectl create job --from=cronjob/cats-dogs-training manual-training-run -n cats-dogs-classification
   schedule: "0 2 * * 0"  # Runs at 2 AM every Sunday
-  jobBackoffLimit: 2
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid
@@ -18,6 +17,7 @@ spec:
       labels:
         app: cats-dogs-training
     spec:
+      backoffLimit: 2
       template:
         metadata:
           labels:
@@ -45,7 +45,7 @@ spec:
           containers:
           - name: training-job
             image: cats-dogs-trainer:latest
-            imagePullPolicy: IfNotPresent
+            imagePullPolicy: Always
             
             command:
             - /bin/bash

@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+
+# Python
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+*.egg-info
+dist/
+build/
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+*.log
+mlruns
+.dvc
+tests/
+archive/
+PetImages/
+
+# Data (avoid copying raw/processed data into build context)
+data/raw/
+data/processed/
+src/data/raw/
+src/data/processed/
+
+# Documentation
+*.md
+MLFLOW_INFERENCE_GUIDE.md
+MLFLOW_INFERENCE_QUICK_REFERENCE.md
+MULTI_MODEL_TRAINING.md
+K8S_ARCHITECTURE_SUMMARY.md
+K8S_DEPLOYMENT_GUIDE.md
+K8S_QUICK_REFERENCE.md
+QUICKSTART.md
+README.md
+
+# Build
+.docker
+docker/
+k8s/
+monitoring/
+
+# CI/CD and deployment
+.github
+.gitlab-ci.yml
+deployment.log
+
+# Misc
+.env
+.env.local
+*.bak

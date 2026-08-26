@@ -45,6 +45,7 @@ data/.gitkeep
 # Dataset
 src/data/raw/
 src/data/processed/
+data/*
 !src/data/.gitkeep
 
 # Models

@@ -11,8 +11,10 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with BuildKit cache mount
+# BuildKit will cache pip packages across builds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 # Copy application code
 COPY src ./src
@@ -23,10 +25,9 @@ RUN mkdir -p logs data
 
 # Set environment variables for MLFlow and training
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 ENV MLFLOW_TRACKING_URI=http://mlflow:5000
 ENV EXPERIMENT_NAME=cats-dogs-k8s
 
-# No explicit CMD - training script will be called via override
-# This allows flexibility for different training commands
-
-ENTRYPOINT ["python"]
+# No explicit CMD or ENTRYPOINT - training script will be called via command override
+# This allows flexibility for different training commands from Kubernetes
