@@ -1,0 +1,28 @@
+# Training parameters for DVC pipeline
+
+train:
+  epochs: 20
+  batch_size: 32
+  learning_rate: 0.001
+  model_name: "simple_cnn"
+  validation_split: 0.1
+  test_split: 0.1
+
+data:
+  image_size: 224
+  channels: 3
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+augmentation:
+  enabled: true
+  flip_horizontal: true
+  rotation_degrees: 15
+  translate: [0.1, 0.1]
+  scale: [0.8, 1.2]
+  color_jitter: true
+
+inference:
+  confidence_threshold: 0.5
+  device: "auto"  # auto, cuda, cpu

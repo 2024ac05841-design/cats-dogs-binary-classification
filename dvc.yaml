@@ -1,0 +1,25 @@
+stages:
+  prepare:
+    cmd: python scripts/prepare_data.py
+    deps:
+      - data/raw
+    outs:
+      - data/processed:
+          cache: true
+
+  train:
+    cmd: python scripts/train.py
+    deps:
+      - src/models
+      - src/data
+      - data/processed
+    params:
+      - train.epochs
+      - train.batch_size
+      - train.lr
+    outs:
+      - models/model.pkl:
+          cache: true
+    metrics:
+      - models/training_history.json:
+          cache: false

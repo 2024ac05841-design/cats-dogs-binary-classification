@@ -1,0 +1,49 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Docker Compose (Local)
+      run: |
+        docker-compose -f docker-compose.yml pull || true
+        docker-compose -f docker-compose.yml down || true
+        docker-compose -f docker-compose.yml up -d
+    
+    - name: Wait for service to be ready
+      run: |
+        sleep 10
+        for i in {1..30}; do
+          curl -f http://localhost:8000/health && break || sleep 2
+        done
+    
+    - name: Run smoke tests
+      run: |
+        bash smoke_tests.sh
+    
+    - name: Log deployment
+      if: success()
+      run: |
+        echo "Deployment successful" > deployment.log
+        echo "Image: cats-dogs-classifier:latest" >> deployment.log
+        echo "Deployed at: $(date)" >> deployment.log
+    
+    # Optional: Deploy to Kubernetes if available
+    - name: Deploy to Kubernetes (Optional)
+      if: false  # Disable by default, enable if k8s cluster available
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl rollout status deployment/cats-dogs-classifier
