@@ -1,0 +1,139 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cats-dogs-training
+  namespace: cats-dogs-classification
+spec:
+  # Manual trigger: Run at specific times (adjust as needed)
+  # Format: minute hour day month day-of-week
+  # To run manually: kubectl create job --from=cronjob/cats-dogs-training manual-training-run -n cats-dogs-classification
+  schedule: "0 2 * * 0"  # Runs at 2 AM every Sunday
+  jobBackoffLimit: 2
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  
+  jobTemplate:
+    metadata:
+      labels:
+        app: cats-dogs-training
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cats-dogs-training
+        spec:
+          serviceAccountName: training-account
+          restartPolicy: OnFailure
+          
+          # Init container to prepare data directories
+          initContainers:
+          - name: prepare-dirs
+            image: busybox:1.35
+            command: ['sh', '-c']
+            args:
+            - |
+              mkdir -p /data/processed/train /data/processed/val /data/processed/test
+              mkdir -p /models/best_model
+              chmod -R 777 /data /models
+            volumeMounts:
+            - name: training-data
+              mountPath: /data
+            - name: training-models
+              mountPath: /models
+          
+          containers:
+          - name: training-job
+            image: cats-dogs-classifier:latest
+            imagePullPolicy: IfNotPresent
+            
+            command:
+            - /bin/bash
+            - -c
+            - |
+              cd /app
+              python src/scripts/train.py --compare-models \
+                --epochs ${EPOCHS} \
+                --batch-size ${BATCH_SIZE} \
+                --lr ${LEARNING_RATE} \
+                --data-dir /data/processed \
+                --best-model-dir /models/best_model
+            
+            env:
+            - name: EPOCHS
+              value: "20"
+            - name: BATCH_SIZE
+              value: "32"
+            - name: LEARNING_RATE
+              value: "0.001"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow:5000"
+            - name: MLFLOW_EXPERIMENT
+              value: "cats-dogs-k8s"
+            
+            resources:
+              requests:
+                cpu: 500m
+                memory: 2Gi
+              limits:
+                cpu: 2000m
+                memory: 4Gi
+            
+            volumeMounts:
+            - name: training-data
+              mountPath: /data
+            - name: training-models
+              mountPath: /models
+            - name: app-code
+              mountPath: /app
+          
+          volumes:
+          - name: training-data
+            persistentVolumeClaim:
+              claimName: training-data-pvc
+          - name: training-models
+            persistentVolumeClaim:
+              claimName: training-models-pvc
+          - name: app-code
+            emptyDir: {}
+
+---
+# ServiceAccount for training job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: training-account
+  namespace: cats-dogs-classification
+
+---
+# Role for training job
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: training-role
+  namespace: cats-dogs-classification
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list"]
+
+---
+# RoleBinding for training job
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: training-rolebinding
+  namespace: cats-dogs-classification
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: training-role
+subjects:
+- kind: ServiceAccount
+  name: training-account
+  namespace: cats-dogs-classification

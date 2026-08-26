@@ -1,0 +1,98 @@
+---
+# Persistent Volume for Training Data
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: training-data-pv
+  namespace: cats-dogs-classification
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: "/mnt/data/cats-dogs/data"
+
+---
+# Persistent Volume for Training Outputs (Models)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: training-models-pv
+  namespace: cats-dogs-classification
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: "/mnt/data/cats-dogs/models"
+
+---
+# Persistent Volume for MLFlow Artifacts
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mlflow-artifacts-pv
+  namespace: cats-dogs-classification
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: "/mnt/data/cats-dogs/mlflow"
+
+---
+# PVC for Training Data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-data-pvc
+  namespace: cats-dogs-classification
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: training-data-pv
+
+---
+# PVC for Training Models
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-models-pvc
+  namespace: cats-dogs-classification
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: training-models-pv
+
+---
+# PVC for MLFlow Artifacts
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-artifacts-pvc
+  namespace: cats-dogs-classification
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 20Gi
+  volumeName: mlflow-artifacts-pv

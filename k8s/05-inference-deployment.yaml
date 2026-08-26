@@ -1,0 +1,155 @@
+---
+# Inference Deployment with namespace and storage
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-service
+  namespace: cats-dogs-classification
+  labels:
+    app: inference-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inference-service
+  template:
+    metadata:
+      labels:
+        app: inference-service
+    spec:
+      serviceAccountName: inference-account
+      
+      # Init container to copy best model to inference location
+      initContainers:
+      - name: copy-model
+        image: busybox:1.35
+        command: ['sh', '-c']
+        args:
+        - |
+          if [ -f /models/best_model/best_model_*.pkl ]; then
+            cp /models/best_model/best_model_*.pkl /app-models/model.pkl
+            echo "Model copied successfully"
+          else
+            echo "Warning: No best model found, using default"
+          fi
+        volumeMounts:
+        - name: training-models
+          mountPath: /models
+        - name: app-models
+          mountPath: /app-models
+      
+      containers:
+      - name: inference-service
+        image: cats-dogs-classifier:latest
+        imagePullPolicy: IfNotPresent
+        
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        
+        env:
+        - name: MODEL_PATH
+          value: "/app-models/model.pkl"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: MLFLOW_TRACKING_URI
+          value: "http://mlflow:5000"
+        
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        
+        volumeMounts:
+        - name: app-models
+          mountPath: /app-models
+        - name: training-models
+          mountPath: /models
+          readOnly: true
+      
+      volumes:
+      - name: app-models
+        emptyDir: {}
+      - name: training-models
+        persistentVolumeClaim:
+          claimName: training-models-pvc
+
+---
+# Inference Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-service
+  namespace: cats-dogs-classification
+  labels:
+    app: inference-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: inference-service
+
+---
+# ServiceAccount for Inference
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inference-account
+  namespace: cats-dogs-classification
+
+---
+# Role for Inference
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: inference-role
+  namespace: cats-dogs-classification
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list"]
+
+---
+# RoleBinding for Inference
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: inference-rolebinding
+  namespace: cats-dogs-classification
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: inference-role
+subjects:
+- kind: ServiceAccount
+  name: inference-account
+  namespace: cats-dogs-classification

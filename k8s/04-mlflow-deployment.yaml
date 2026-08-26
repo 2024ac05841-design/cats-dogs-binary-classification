@@ -1,0 +1,140 @@
+---
+# MLFlow Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: cats-dogs-classification
+  labels:
+    app: mlflow
+    component: tracking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+        component: tracking
+    spec:
+      serviceAccountName: mlflow-account
+      
+      containers:
+      - name: mlflow-server
+        image: python:3.11-slim
+        
+        command:
+        - /bin/bash
+        - -c
+        - |
+          pip install mlflow boto3 psycopg2-binary --quiet
+          mkdir -p /mlflow/artifacts
+          mlflow server \
+            --backend-store-uri sqlite:////mlflow/artifacts/mlflow.db \
+            --default-artifact-root /mlflow/artifacts \
+            --host 0.0.0.0 \
+            --port 5000
+        
+        ports:
+        - containerPort: 5000
+          name: web
+          protocol: TCP
+        
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        
+        volumeMounts:
+        - name: mlflow-artifacts
+          mountPath: /mlflow/artifacts
+        - name: mlflow-data
+          mountPath: /mlflow
+      
+      volumes:
+      - name: mlflow-artifacts
+        persistentVolumeClaim:
+          claimName: mlflow-artifacts-pvc
+      - name: mlflow-data
+        emptyDir: {}
+
+---
+# MLFlow Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+  namespace: cats-dogs-classification
+  labels:
+    app: mlflow
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+    protocol: TCP
+    name: web
+  selector:
+    app: mlflow
+
+---
+# ServiceAccount for MLFlow
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mlflow-account
+  namespace: cats-dogs-classification
+
+---
+# Role for MLFlow
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mlflow-role
+  namespace: cats-dogs-classification
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+
+---
+# RoleBinding for MLFlow
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mlflow-rolebinding
+  namespace: cats-dogs-classification
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mlflow-role
+subjects:
+- kind: ServiceAccount
+  name: mlflow-account
+  namespace: cats-dogs-classification
