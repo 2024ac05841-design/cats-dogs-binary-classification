@@ -1,6 +1,6 @@
 stages:
   prepare:
-    cmd: python scripts/prepare_data.py
+    cmd: python src/scripts/prepare_data.py
     deps:
       - data/raw
     outs:
@@ -8,7 +8,7 @@ stages:
           cache: true
 
   train:
-    cmd: python scripts/train.py
+    cmd: python src/scripts/train.py --compare-models --epochs 20 --batch-size 32
     deps:
       - src/models
       - src/data

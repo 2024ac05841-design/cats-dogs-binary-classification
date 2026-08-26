@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """
 Script to prepare and split dataset for training
-Organizes raw images into train/val/test sets
 """
 
 import os
@@ -9,6 +8,7 @@ import shutil
 import logging
 from pathlib import Path
 from sklearn.model_selection import train_test_split
+import random
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ def prepare_dataset(raw_dir: str = "data/raw",
     
     for cls in ['cats', 'dogs']:
         src_dir = raw_path / cls
-        files = list(src_dir.glob('*.jpg')) + list(src_dir.glob('*.jpeg')) + list(src_dir.glob('*.png'))
+        files = list(src_dir.glob('*.jpg')) + list(src_dir.glob('*.jpeg'))
         
         if not files:
             logger.warning(f"No images found in {src_dir}")
@@ -86,15 +86,9 @@ def prepare_dataset(raw_dir: str = "data/raw",
     logger.info("Dataset preparation complete!")
     
     # Print summary
-    total_train = sum(1 for _ in (processed_path / 'train').rglob('*.jpg')) + \
-                  sum(1 for _ in (processed_path / 'train').rglob('*.jpeg')) + \
-                  sum(1 for _ in (processed_path / 'train').rglob('*.png'))
-    total_val = sum(1 for _ in (processed_path / 'val').rglob('*.jpg')) + \
-                sum(1 for _ in (processed_path / 'val').rglob('*.jpeg')) + \
-                sum(1 for _ in (processed_path / 'val').rglob('*.png'))
-    total_test = sum(1 for _ in (processed_path / 'test').rglob('*.jpg')) + \
-                 sum(1 for _ in (processed_path / 'test').rglob('*.jpeg')) + \
-                 sum(1 for _ in (processed_path / 'test').rglob('*.png'))
+    total_train = sum(1 for _ in (processed_path / 'train').rglob('*.jpg'))
+    total_val = sum(1 for _ in (processed_path / 'val').rglob('*.jpg'))
+    total_test = sum(1 for _ in (processed_path / 'test').rglob('*.jpg'))
     
     print("\n" + "="*50)
     print("Dataset Summary")

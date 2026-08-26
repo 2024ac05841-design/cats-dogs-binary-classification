@@ -14,7 +14,7 @@ You can now train 3 different models and automatically select the best one:
 
 ```bash
 # From project root
-python scripts/train.py --compare-models --epochs 20 --batch-size 32
+python src/scripts/train.py --compare-models --epochs 20 --batch-size 32
 ```
 
 **What happens:**
@@ -36,19 +36,19 @@ models/best_model/
 
 ```bash
 # Train SimpleCNN
-python scripts/train.py --model simple_cnn --epochs 20 --output-path models/simple_cnn.pkl
+python src/scripts/train.py --model simple_cnn --epochs 20 --output-path models/simple_cnn.pkl
 
 # Train Logistic Regression
-python scripts/train.py --model logistic_regression --epochs 20 --output-path models/logreg.pkl
+python src/scripts/train.py --model logistic_regression --epochs 20 --output-path models/logreg.pkl
 
 # Train ResNet18
-python scripts/train.py --model resnet18 --epochs 20 --output-path models/resnet18.pkl
+python src/scripts/train.py --model resnet18 --epochs 20 --output-path models/resnet18.pkl
 ```
 
 ## Command Options
 
 ```bash
-python scripts/train.py [OPTIONS]
+python src/scripts/train.py [OPTIONS]
 
 Options:
   --data-dir PATH                Path to training data (default: data/processed)
@@ -66,17 +66,17 @@ Options:
 
 ### Train all models for 30 epochs with batch size 16
 ```bash
-python scripts/train.py --compare-models --epochs 30 --batch-size 16
+python src/scripts/train.py --compare-models --epochs 30 --batch-size 16
 ```
 
 ### Train single model with custom output path
 ```bash
-python scripts/train.py --model resnet18 --epochs 25 --output-path my_models/resnet.pkl
+python src/scripts/train.py --model resnet18 --epochs 25 --output-path my_models/resnet.pkl
 ```
 
 ### Use different data directory
 ```bash
-python scripts/train.py --compare-models --data-dir custom_data/
+python src/scripts/train.py --compare-models --data-dir custom_data/
 ```
 
 ## Model Comparison Results
@@ -197,7 +197,7 @@ export MODEL_PATH=models/best_model/best_model_resnet18.pkl
 
 **Issue**: Model comparison shows all models poorly
 - **Solution**: Check your data is in `data/processed/train/` and `data/processed/val/`
-- Run `python scripts/prepare_data.py` first if needed
+- Run `python src/scripts/prepare_data.py` first if needed
 
 ## Next Steps
 
