@@ -1,1 +1,1 @@
-"""Scripts module"""
+"""Scripts module for standalone utilities"""
