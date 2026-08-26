@@ -20,20 +20,6 @@ spec:
         component: tracking
     spec:
       serviceAccountName: mlflow-account
-      
-      initContainers:
-      - name: prepare-storage
-        image: busybox:latest
-        command:
-        - sh
-        - -c
-        - |
-          mkdir -p /mlflow/artifacts
-          chmod 777 /mlflow /mlflow/artifacts
-        volumeMounts:
-        - name: mlflow-storage
-          mountPath: /mlflow
-      
       containers:
       - name: mlflow-server
         image: ghcr.io/mlflow/mlflow:v2.7.0

@@ -18,14 +18,6 @@ spec:
       labels:
         app: grafana
     spec:
-      initContainers:
-      - name: init-chmod-data
-        image: busybox
-        command: ["sh", "-c", "chmod -R 777 /var/lib/grafana || true"]
-        volumeMounts:
-        - name: storage
-          mountPath: /var/lib/grafana
-      
       containers:
       - name: grafana
         image: grafana/grafana:latest
