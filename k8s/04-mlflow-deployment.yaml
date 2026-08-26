@@ -29,9 +29,12 @@ spec:
         - /bin/bash
         - -c
         - |
-          pip install mlflow boto3 psycopg2-binary --quiet
+          echo "Installing MLFlow..."
+          pip install mlflow==2.7.0 boto3 psycopg2-binary --quiet --no-cache-dir
+          echo "Creating artifact directory..."
           mkdir -p /mlflow/artifacts
-          mlflow server \
+          echo "Starting MLFlow server..."
+          exec mlflow server \
             --backend-store-uri sqlite:////mlflow/artifacts/mlflow.db \
             --default-artifact-root /mlflow/artifacts \
             --host 0.0.0.0 \
@@ -48,41 +51,38 @@ spec:
         
         resources:
           requests:
-            cpu: 200m
-            memory: 512Mi
+            cpu: 300m
+            memory: 768Mi
           limits:
-            cpu: 1000m
-            memory: 2Gi
+            cpu: 2000m
+            memory: 3Gi
         
         livenessProbe:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          timeoutSeconds: 10
           failureThreshold: 3
         
         readinessProbe:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         
         volumeMounts:
-        - name: mlflow-artifacts
-          mountPath: /mlflow/artifacts
-        - name: mlflow-data
+        - name: mlflow-storage
           mountPath: /mlflow
       
       volumes:
-      - name: mlflow-artifacts
+      - name: mlflow-storage
         persistentVolumeClaim:
           claimName: mlflow-artifacts-pvc
-      - name: mlflow-data
-        emptyDir: {}
 
 ---
 # MLFlow Service
