@@ -44,7 +44,7 @@ spec:
           
           containers:
           - name: training-job
-            image: cats-dogs-trainer:latest
+            image: 172.26.195.22:5000/cats-dogs-trainer:latest
             imagePullPolicy: Always
             
             command:
