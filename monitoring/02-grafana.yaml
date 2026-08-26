@@ -18,15 +18,10 @@ spec:
       labels:
         app: grafana
     spec:
-      securityContext:
-        fsGroup: 472
-        runAsNonRoot: false
-        runAsUser: 0
-      
       initContainers:
-      - name: init-chown-data
+      - name: init-chmod-data
         image: busybox
-        command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana || true"]
+        command: ["sh", "-c", "chmod -R 777 /var/lib/grafana || true"]
         volumeMounts:
         - name: storage
           mountPath: /var/lib/grafana
@@ -107,6 +102,7 @@ spec:
   storageClassName: manual
   hostPath:
     path: /mnt/data/cats-dogs/grafana
+    type: DirectoryOrCreate
 
 ---
 # Grafana Storage PersistentVolumeClaim

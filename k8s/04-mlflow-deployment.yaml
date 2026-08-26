@@ -21,24 +21,34 @@ spec:
     spec:
       serviceAccountName: mlflow-account
       
-      containers:
-      - name: mlflow-server
-        image: python:3.11-slim
-        
+      initContainers:
+      - name: prepare-storage
+        image: busybox:latest
         command:
-        - /bin/bash
+        - sh
         - -c
         - |
-          echo "Installing MLFlow..."
-          pip install mlflow==2.7.0 boto3 psycopg2-binary --quiet --no-cache-dir
-          echo "Creating artifact directory..."
           mkdir -p /mlflow/artifacts
-          echo "Starting MLFlow server..."
-          exec mlflow server \
-            --backend-store-uri sqlite:////mlflow/artifacts/mlflow.db \
-            --default-artifact-root /mlflow/artifacts \
-            --host 0.0.0.0 \
-            --port 5000
+          chmod 777 /mlflow /mlflow/artifacts
+        volumeMounts:
+        - name: mlflow-storage
+          mountPath: /mlflow
+      
+      containers:
+      - name: mlflow-server
+        image: ghcr.io/mlflow/mlflow:v2.7.0
+        
+        command:
+        - mlflow
+        - server
+        - --backend-store-uri
+        - sqlite:////mlflow/artifacts/mlflow.db
+        - --default-artifact-root
+        - /mlflow/artifacts
+        - --host
+        - 0.0.0.0
+        - --port
+        - "5000"
         
         ports:
         - containerPort: 5000
@@ -51,18 +61,18 @@ spec:
         
         resources:
           requests:
-            cpu: 300m
-            memory: 768Mi
+            cpu: 200m
+            memory: 512Mi
           limits:
-            cpu: 2000m
-            memory: 3Gi
+            cpu: 1000m
+            memory: 2Gi
         
         livenessProbe:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 90
-          periodSeconds: 15
+          initialDelaySeconds: 120
+          periodSeconds: 20
           timeoutSeconds: 10
           failureThreshold: 3
         

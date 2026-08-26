@@ -14,6 +14,7 @@ spec:
   storageClassName: manual
   hostPath:
     path: "/mnt/data/cats-dogs/data"
+    type: DirectoryOrCreate
 
 ---
 # Persistent Volume for Training Outputs (Models)
@@ -31,6 +32,7 @@ spec:
   storageClassName: manual
   hostPath:
     path: "/mnt/data/cats-dogs/models"
+    type: DirectoryOrCreate
 
 ---
 # Persistent Volume for MLFlow Artifacts
@@ -48,6 +50,7 @@ spec:
   storageClassName: manual
   hostPath:
     path: "/mnt/data/cats-dogs/mlflow"
+    type: DirectoryOrCreate
 
 ---
 # PVC for Training Data
