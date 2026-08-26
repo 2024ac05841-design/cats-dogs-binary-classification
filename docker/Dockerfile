@@ -19,17 +19,19 @@ COPY src ./src
 COPY models ./models
 
 # Create necessary directories
-RUN mkdir -p logs data
+RUN mkdir -p logs data /app-models
 
-# Set environment variables
+# Set environment variables for MLFlow model fetching
 ENV PYTHONUNBUFFERED=1
-ENV MODEL_PATH=/app/models/model.pkl
+ENV MLFLOW_TRACKING_URI=http://mlflow:5000
+ENV EXPERIMENT_NAME=cats-dogs-k8s
+ENV MODEL_PATH=/app-models/model.pkl
 
 # Expose port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
 
 # Run FastAPI application

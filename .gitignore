@@ -43,9 +43,9 @@ mlruns/
 data/.gitkeep
 
 # Dataset
-data/raw/
-data/processed/
-!data/.gitkeep
+src/data/raw/
+src/data/processed/
+!src/data/.gitkeep
 
 # Models
 models/

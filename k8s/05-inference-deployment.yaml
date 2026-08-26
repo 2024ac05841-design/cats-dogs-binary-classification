@@ -1,5 +1,5 @@
 ---
-# Inference Deployment with namespace and storage
+# Inference Deployment with MLFlow-based model fetching
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,25 +20,6 @@ spec:
     spec:
       serviceAccountName: inference-account
       
-      # Init container to copy best model to inference location
-      initContainers:
-      - name: copy-model
-        image: busybox:1.35
-        command: ['sh', '-c']
-        args:
-        - |
-          if [ -f /models/best_model/best_model_*.pkl ]; then
-            cp /models/best_model/best_model_*.pkl /app-models/model.pkl
-            echo "Model copied successfully"
-          else
-            echo "Warning: No best model found, using default"
-          fi
-        volumeMounts:
-        - name: training-models
-          mountPath: /models
-        - name: app-models
-          mountPath: /app-models
-      
       containers:
       - name: inference-service
         image: cats-dogs-classifier:latest
@@ -56,6 +37,8 @@ spec:
           value: "1"
         - name: MLFLOW_TRACKING_URI
           value: "http://mlflow:5000"
+        - name: EXPERIMENT_NAME
+          value: "cats-dogs-k8s"
         
         resources:
           requests:
@@ -78,23 +61,18 @@ spec:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 15
           periodSeconds: 5
           timeoutSeconds: 3
         
         volumeMounts:
         - name: app-models
           mountPath: /app-models
-        - name: training-models
-          mountPath: /models
-          readOnly: true
       
       volumes:
       - name: app-models
         emptyDir: {}
-      - name: training-models
-        persistentVolumeClaim:
-          claimName: training-models-pvc
+
 
 ---
 # Inference Service
@@ -131,9 +109,6 @@ metadata:
   name: inference-role
   namespace: cats-dogs-classification
 rules:
-- apiGroups: [""]
-  resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["pods", "pods/log"]
   verbs: ["get", "list"]
