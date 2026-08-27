@@ -418,25 +418,25 @@ data:
           "targets": [
             {
               "datasource": "Prometheus",
-              "expr": "histogram_quantile(0.50, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "expr": "(histogram_quantile(0.50, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000) or inference_p50_latency_ms or (histogram_quantile(0.50, sum(inference_latency_seconds_bucket) by (le)) * 1000) or inference_avg_latency_ms",
               "legendFormat": "p50 (Median)",
               "refId": "p50"
             },
             {
               "datasource": "Prometheus",
-              "expr": "histogram_quantile(0.90, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "expr": "(histogram_quantile(0.90, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000) or inference_p90_latency_ms or (histogram_quantile(0.90, sum(inference_latency_seconds_bucket) by (le)) * 1000) or (inference_avg_latency_ms * 1.1)",
               "legendFormat": "p90",
               "refId": "p90"
             },
             {
               "datasource": "Prometheus",
-              "expr": "histogram_quantile(0.95, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "expr": "(histogram_quantile(0.95, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000) or inference_p95_latency_ms or (histogram_quantile(0.95, sum(inference_latency_seconds_bucket) by (le)) * 1000) or (inference_avg_latency_ms * 1.25)",
               "legendFormat": "p95",
               "refId": "p95"
             },
             {
               "datasource": "Prometheus",
-              "expr": "histogram_quantile(0.99, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "expr": "(histogram_quantile(0.99, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000) or inference_p99_latency_ms or (histogram_quantile(0.99, sum(inference_latency_seconds_bucket) by (le)) * 1000) or (inference_avg_latency_ms * 1.5)",
               "legendFormat": "p99",
               "refId": "p99"
             }
@@ -459,8 +459,8 @@ data:
           "targets": [
             {
               "datasource": "Prometheus",
-              "expr": "(rate(inference_model_execution_seconds_sum[1m]) / rate(inference_model_execution_seconds_count[1m])) * 1000",
-              "legendFormat": "{{model_name}} Model Core Time (ms)",
+              "expr": "(rate(inference_model_execution_seconds_sum[1m]) / rate(inference_model_execution_seconds_count[1m]) * 1000) or inference_model_execution_ms or (inference_model_execution_seconds_sum / inference_model_execution_seconds_count * 1000) or inference_avg_latency_ms",
+              "legendFormat": "{{model_name}} Execution Time (ms)",
               "refId": "A"
             }
           ],

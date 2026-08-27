@@ -89,6 +89,37 @@ if PROMETHEUS_AVAILABLE:
         "Moving average latency of predictions in milliseconds",
     )
 
+    INFERENCE_LATEST_LATENCY_MS = Gauge(
+        "inference_latest_latency_ms",
+        "Most recent prediction latency in milliseconds",
+    )
+
+    INFERENCE_MODEL_EXECUTION_MS = Gauge(
+        "inference_model_execution_ms",
+        "Most recent model forward pass execution time in milliseconds",
+        ["model_name"],
+    )
+
+    INFERENCE_P50_LATENCY_MS = Gauge(
+        "inference_p50_latency_ms",
+        "Median (p50) prediction latency in milliseconds",
+    )
+
+    INFERENCE_P90_LATENCY_MS = Gauge(
+        "inference_p90_latency_ms",
+        "90th percentile (p90) prediction latency in milliseconds",
+    )
+
+    INFERENCE_P95_LATENCY_MS = Gauge(
+        "inference_p95_latency_ms",
+        "95th percentile (p95) prediction latency in milliseconds",
+    )
+
+    INFERENCE_P99_LATENCY_MS = Gauge(
+        "inference_p99_latency_ms",
+        "99th percentile (p99) prediction latency in milliseconds",
+    )
+
 
 class MetricsCollector:
     """In-memory collector and stats accumulator"""
@@ -100,6 +131,7 @@ class MetricsCollector:
         self.cat_count = 0
         self.dog_count = 0
         self.total_latency_ms = 0.0
+        self.latency_history = []
         self.start_time = datetime.utcnow()
         self.recent_logs = []
         self.max_recent_logs = 100
@@ -134,6 +166,9 @@ class MetricsCollector:
         if success:
             self.prediction_count += 1
             self.total_latency_ms += latency_ms
+            self.latency_history.append(latency_ms)
+            if len(self.latency_history) > 1000:
+                self.latency_history.pop(0)
 
             if predicted_class.lower() == "cat":
                 self.cat_count += 1
@@ -141,6 +176,16 @@ class MetricsCollector:
                 self.dog_count += 1
 
             avg_lat = self.total_latency_ms / max(self.prediction_count, 1)
+
+            # Calculate percentiles
+            sorted_latencies = sorted(self.latency_history)
+            n = len(sorted_latencies)
+            p50 = sorted_latencies[int(n * 0.50)] if n > 0 else latency_ms
+            p90 = sorted_latencies[min(int(n * 0.90), n - 1)] if n > 0 else latency_ms
+            p95 = sorted_latencies[min(int(n * 0.95), n - 1)] if n > 0 else latency_ms
+            p99 = sorted_latencies[min(int(n * 0.99), n - 1)] if n > 0 else latency_ms
+
+            model_time_ms = (model_time_s * 1000.0) if model_time_s is not None else latency_ms
 
             if PROMETHEUS_AVAILABLE:
                 try:
@@ -150,6 +195,12 @@ class MetricsCollector:
                     INFERENCE_LATENCY_SECONDS.labels(endpoint="/predict").observe(latency_ms / 1000.0)
                     INFERENCE_CONFIDENCE_SCORE.labels(predicted_class=predicted_class).observe(confidence)
                     INFERENCE_AVG_LATENCY_MS.set(avg_lat)
+                    INFERENCE_LATEST_LATENCY_MS.set(latency_ms)
+                    INFERENCE_P50_LATENCY_MS.set(p50)
+                    INFERENCE_P90_LATENCY_MS.set(p90)
+                    INFERENCE_P95_LATENCY_MS.set(p95)
+                    INFERENCE_P99_LATENCY_MS.set(p99)
+                    INFERENCE_MODEL_EXECUTION_MS.labels(model_name=model_name).set(model_time_ms)
 
                     if model_time_s is not None:
                         INFERENCE_MODEL_TIME_SECONDS.labels(model_name=model_name).observe(model_time_s)
