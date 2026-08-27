@@ -74,6 +74,7 @@ class DocumentationMetadata(BaseModel):
 
 
 class InfoResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     service: str
     version: str
     device: Optional[str]
@@ -86,6 +87,7 @@ class InfoResponse(BaseModel):
 
 
 class LogEntry(BaseModel):
+    model_config = {"protected_namespaces": ()}
     timestamp: str
     request_id: Optional[str] = None
     client_ip: Optional[str] = None
@@ -100,12 +102,14 @@ class LogEntry(BaseModel):
 
 
 class LogsResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     total: int
     limit: int
     logs: list[LogEntry]
 
 
 class StatsResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     timestamp: str
     uptime_seconds: float
     total_requests: int
@@ -284,6 +288,34 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def request_telemetry_middleware(request: Request, call_next):
+    """Global request/response logging and latency tracking middleware"""
+    start_time = time.perf_counter()
+    req_id = str(int(time.time() * 1000))
+    client_ip = request.client.host if request.client else "unknown"
+    path = request.url.path
+    method = request.method
+
+    is_probe = path in ["/health", "/metrics"]
+    if not is_probe:
+        logger.info(f"➡️ [REQ-{req_id}] Incoming {method} {path} from {client_ip}")
+
+    try:
+        response = await call_next(request)
+        latency_ms = (time.perf_counter() - start_time) * 1000.0
+        status_code = response.status_code
+
+        if not is_probe:
+            logger.info(f"⬅️ [REQ-{req_id}] {status_code} {method} {path} completed in {latency_ms:.1f}ms")
+
+        return response
+    except Exception as e:
+        latency_ms = (time.perf_counter() - start_time) * 1000.0
+        logger.error(f"❌ [REQ-{req_id}] 500 Server Error on {method} {path} ({latency_ms:.1f}ms): {e}", exc_info=True)
+        raise e
+
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Redirect root to interactive Swagger UI documentation"""
@@ -425,8 +457,9 @@ async def metrics():
     summary="Recent Structured Request & Response Logs",
     description="Returns the last N structured JSON logs including request ID, predicted class, confidence, and latency.",
 )
-async def get_logs(limit: int = 50):
+async def get_logs(limit: int = 50, request: Request = None):
     """Retrieve recent structured inference logs"""
+    record_request(method="GET", endpoint="/logs", status_code=200)
     logs = get_recent_logs()
     return {
         "total": len(logs),
@@ -442,8 +475,9 @@ async def get_logs(limit: int = 50):
     summary="Live Telemetry & Aggregated Statistics",
     description="Returns real-time aggregated metrics such as total requests, class distribution, moving average latency, and model metadata.",
 )
-async def stats():
+async def stats(request: Request = None):
     """Retrieve real-time telemetry and statistics"""
+    record_request(method="GET", endpoint="/stats", status_code=200)
     return get_metrics()
 
 
@@ -454,8 +488,9 @@ async def stats():
     summary="Model Architecture & Service Metadata",
     description="Provides detailed information regarding active model weights, MLFlow registry version, device (CPU/GPU), and available endpoints.",
 )
-async def info():
+async def info(request: Request = None):
     """Get information about the model and service"""
+    record_request(method="GET", endpoint="/info", status_code=200)
     return {
         "service": "Cats vs Dogs Classifier",
         "version": "1.0.0",
