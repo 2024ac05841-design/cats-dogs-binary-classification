@@ -8,7 +8,7 @@ stages:
           cache: true
 
   train:
-    cmd: python src/scripts/train.py --compare-models --epochs 20 --batch-size 32
+    cmd: python src/scripts/train.py --epochs 20 --batch-size 32
     deps:
       - src/models
       - src/data
@@ -16,10 +16,10 @@ stages:
     params:
       - train.epochs
       - train.batch_size
-      - train.lr
+      - train.learning_rate
     outs:
-      - models/model.pkl:
+      - models/best_model:
           cache: true
     metrics:
-      - models/training_history.json:
+      - models/best_model/model_comparison.json:
           cache: false
