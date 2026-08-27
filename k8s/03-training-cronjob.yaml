@@ -28,8 +28,8 @@ spec:
           
           containers:
           - name: training-job
-            image: 172.17.0.2:5000/cats-dogs-trainer:latest
-            imagePullPolicy: Always
+            image: cats-dogs-trainer:latest
+            imagePullPolicy: Never
             
             command:
             - /bin/bash
@@ -68,10 +68,10 @@ spec:
           volumes:
           - name: training-data
             persistentVolumeClaim:
-              claimName: mlflow-data-pvc
+              claimName: training-data-pvc
           - name: training-models
             persistentVolumeClaim:
-              claimName: mlflow-data-pvc
+              claimName: training-models-pvc
 
 ---
 # ServiceAccount for training job
