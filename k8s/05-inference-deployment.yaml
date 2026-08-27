@@ -84,7 +84,7 @@ spec:
 
 
 ---
-# Inference Service
+# Inference Service with NodePort for external browser & Swagger UI access
 apiVersion: v1
 kind: Service
 metadata:
@@ -93,10 +93,11 @@ metadata:
   labels:
     app: inference-service
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
   - port: 8000
     targetPort: 8000
+    nodePort: 30800
     protocol: TCP
     name: http
   selector:

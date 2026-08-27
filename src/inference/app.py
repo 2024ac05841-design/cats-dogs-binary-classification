@@ -9,7 +9,7 @@ from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 import torch
 import torch.nn as nn
@@ -170,18 +170,58 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down inference service...")
 
 
-# Create FastAPI app
+# OpenAPI Tags Metadata
+tags_metadata = [
+    {
+        "name": "Inference",
+        "description": "Interactive model inference endpoint. Upload an image (JPG/PNG) to classify as **Cat** or **Dog** with confidence scores.",
+    },
+    {
+        "name": "Monitoring & Observability",
+        "description": "Endpoints for Prometheus metric scraping, live request/response audit logs, and real-time statistics.",
+    },
+    {
+        "name": "Service Health & Info",
+        "description": "Service health checks, loaded model metadata, and active MLFlow configuration.",
+    },
+]
+
+# Create FastAPI app with interactive OpenAPI Swagger docs
 app = FastAPI(
-    title="Cats vs Dogs Classifier",
-    description="REST API for binary image classification with Prometheus metrics and telemetry",
+    title="🐾 Cats vs Dogs Classification API",
+    description="""
+### Interactive REST API & Swagger UI for Cats vs Dogs Binary Image Classification
+
+This API is backed by **PyTorch**, managed via **MLFlow Model Registry**, and monitored with **Prometheus & Grafana**.
+
+#### 🚀 Key Features:
+- **Interactive Prediction**: Upload images directly in Swagger UI (`/predict`) to get class predictions and probabilities.
+- **Model Registry Integration**: Automatically pulls and caches **`cats-dogs-best-model`** (ResNet18 / 99.6% Accuracy).
+- **Full Observability**: Live Prometheus metrics (`/metrics`), structured audit logs (`/logs`), and telemetry (`/stats`).
+
+#### 📚 Documentation Endpoints:
+- **Swagger UI**: `/docs`
+- **ReDoc UI**: `/redoc`
+- **OpenAPI JSON Spec**: `/openapi.json`
+    """,
     version="1.0.0",
+    openapi_tags=tags_metadata,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
 )
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/", include_in_schema=False)
+async def root():
+    """Redirect root to interactive Swagger UI documentation"""
+    return RedirectResponse(url="/docs")
+
+
+@app.get("/health", response_model=HealthResponse, tags=["Service Health & Info"], summary="Health Check Endpoint")
 async def health_check():
-    """Health check endpoint"""
+    """Liveness & readiness health check endpoint for Kubernetes and monitoring probes."""
     try:
         if model is None:
             record_request(method="GET", endpoint="/health", status_code=503)
@@ -204,8 +244,14 @@ async def health_check():
         )
 
 
-@app.post("/predict", response_model=PredictionResponse)
-async def predict_image(file: UploadFile = File(...), request: Request = None):
+@app.post(
+    "/predict",
+    response_model=PredictionResponse,
+    tags=["Inference"],
+    summary="Classify Image as Cat or Dog",
+    description="Upload an image file (`.jpg`, `.png`, `.jpeg`) to receive binary classification results, probability distribution, and confidence level.",
+)
+async def predict_image(file: UploadFile = File(..., description="Image file (JPG or PNG) to classify"), request: Request = None):
     """
     Predict class of uploaded image
 
@@ -290,13 +336,23 @@ async def predict_image(file: UploadFile = File(...), request: Request = None):
         raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
 
 
-@app.get("/metrics")
+@app.get(
+    "/metrics",
+    tags=["Monitoring & Observability"],
+    summary="Prometheus Metrics Exposition",
+    description="Exposes real-time Prometheus metrics (latency histograms, prediction counters, accuracy gauges) for Prometheus scraping.",
+)
 async def metrics():
     """Prometheus metrics endpoint for scraping by Prometheus"""
     return Response(content=get_prometheus_metrics(), media_type=CONTENT_TYPE_LATEST)
 
 
-@app.get("/logs")
+@app.get(
+    "/logs",
+    tags=["Monitoring & Observability"],
+    summary="Recent Structured Request & Response Logs",
+    description="Returns the last N structured JSON logs including request ID, predicted class, confidence, and latency.",
+)
 async def get_logs(limit: int = 50):
     """Retrieve recent structured inference logs"""
     logs = get_recent_logs()
@@ -307,13 +363,23 @@ async def get_logs(limit: int = 50):
     }
 
 
-@app.get("/stats")
+@app.get(
+    "/stats",
+    tags=["Monitoring & Observability"],
+    summary="Live Telemetry & Aggregated Statistics",
+    description="Returns real-time aggregated metrics such as total requests, class distribution, moving average latency, and model metadata.",
+)
 async def stats():
     """Retrieve real-time telemetry and statistics"""
     return get_metrics()
 
 
-@app.get("/info")
+@app.get(
+    "/info",
+    tags=["Service Health & Info"],
+    summary="Model Architecture & Service Metadata",
+    description="Provides detailed information regarding active model weights, MLFlow registry version, device (CPU/GPU), and available endpoints.",
+)
 async def info():
     """Get information about the model and service"""
     return {
@@ -324,6 +390,11 @@ async def info():
         "classes": CLASS_NAMES,
         "model_info": model_info,
         "telemetry": get_metrics(),
+        "documentation": {
+            "swagger_ui": "/docs",
+            "redoc": "/redoc",
+            "openapi_json": "/openapi.json",
+        },
         "endpoints": {
             "health": "/health",
             "predict": "/predict",
@@ -331,6 +402,7 @@ async def info():
             "metrics": "/metrics",
             "stats": "/stats",
             "logs": "/logs",
+            "swagger_ui": "/docs",
         },
     }
 
