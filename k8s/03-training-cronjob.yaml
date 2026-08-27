@@ -38,7 +38,7 @@ spec:
               cd /app
               python src/scripts/train.py \
                 --data-dir /data/processed \
-                --best-model-dir /models/best_model \
+                --output-path /models \
                 --epochs 12 \
                 --batch-size 32 \
                 --lr 0.001
