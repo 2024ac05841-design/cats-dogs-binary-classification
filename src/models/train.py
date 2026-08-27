@@ -32,7 +32,9 @@ def setup_mlflow_experiment():
             mlflow.set_experiment(experiment_name)
             logger.info(f"Created and set MLFlow experiment '{experiment_name}'")
         except Exception as e2:
-            logger.warning(f"Could not create MLFlow experiment: {e2}. Continuing without MLFlow.")
+            logger.warning(
+                f"Could not create MLFlow experiment: {e2}. Continuing without MLFlow."
+            )
 
 
 class Trainer:
@@ -181,16 +183,18 @@ class Trainer:
             except Exception as e:
                 logger.debug(f"MLFlow logging failed: {e}")
                 pass
-        
+
         # Start MLflow run with error handling
         try:
             mlflow_run = mlflow.start_run(run_name=self.experiment_name)
             mlflow_run.__enter__()
             mlflow_available = True
         except Exception as e:
-            logger.warning(f"Could not start MLFlow run: {e}. Training without MLFlow logging.")
+            logger.warning(
+                f"Could not start MLFlow run: {e}. Training without MLFlow logging."
+            )
             mlflow_available = False
-        
+
         if mlflow_available:
             safe_mlflow_log(mlflow.log_param, "model", self.model_name)
             safe_mlflow_log(mlflow.log_param, "epochs", epochs)
@@ -201,9 +205,7 @@ class Trainer:
         best_model_path = None
 
         for epoch in range(epochs):
-            train_loss, train_acc = self.train_epoch(
-                train_loader, optimizer, criterion
-            )
+            train_loss, train_acc = self.train_epoch(train_loader, optimizer, criterion)
             val_loss, val_acc = self.validate(val_loader, criterion)
 
             # Update history
@@ -236,13 +238,13 @@ class Trainer:
         # Log final metrics and model
         safe_mlflow_log(mlflow.log_metric, "best_val_loss", best_val_loss)
         safe_mlflow_log(mlflow.pytorch.log_model, self.model, "model")
-        
+
         if mlflow_available:
             try:
                 mlflow.end_run()
             except:
                 pass
-        
+
         return self.history
 
     def save_model(self, path: str) -> None:
@@ -340,7 +342,7 @@ def train_multiple_models(
         model_names = ["simple_cnn", "logistic_regression", "resnet18"]
 
     logging.basicConfig(level=logging.INFO)
-    
+
     # Setup MLFlow at runtime instead of at import time
     setup_mlflow_experiment()
 
@@ -374,7 +376,7 @@ def train_multiple_models(
         try:
             # Create best_model_dir if it doesn't exist
             Path(best_model_dir).mkdir(parents=True, exist_ok=True)
-            
+
             # Use best_model_dir for temporary model files
             temp_path = os.path.join(best_model_dir, f"temp_{model_name}.pkl")
 
@@ -405,7 +407,9 @@ def train_multiple_models(
                 }
 
             logger.info(f"Completed training {model_name}")
-            logger.info(f"Val Acc: {current_val_acc:.2f}%, Val Loss: {results[model_name]['val_loss']:.4f}")
+            logger.info(
+                f"Val Acc: {current_val_acc:.2f}%, Val Loss: {results[model_name]['val_loss']:.4f}"
+            )
 
         except Exception as e:
             logger.error(f"Error training {model_name}: {str(e)}")
