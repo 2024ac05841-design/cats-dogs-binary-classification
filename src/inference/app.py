@@ -94,11 +94,27 @@ def load_model_on_startup():
             model_name = "simple_cnn"
 
         logger.info(f"Instantiating {model_name} architecture...")
-        model = create_model(model_name=model_name, device=device)
+        model = create_model(model_name=model_name, device=device, pretrained=False)
 
-        # Load weights
+        # Load weights with flexible key prefix matching
         state_dict = torch.load(model_path, map_location=device, weights_only=False)
-        model.load_state_dict(state_dict)
+        try:
+            model.load_state_dict(state_dict)
+        except RuntimeError:
+            # Check if keys are nested (e.g. without 'model.' or with 'model.')
+            new_state_dict = {}
+            has_model_prefix = any(k.startswith("model.") for k in model.state_dict().keys())
+            state_has_prefix = any(k.startswith("model.") for k in state_dict.keys())
+
+            if has_model_prefix and not state_has_prefix:
+                new_state_dict = {f"model.{k}": v for k, v in state_dict.items()}
+            elif not has_model_prefix and state_has_prefix:
+                new_state_dict = {k.replace("model.", "", 1): v for k, v in state_dict.items()}
+            else:
+                new_state_dict = state_dict
+
+            model.load_state_dict(new_state_dict, strict=False)
+
         model.eval()
 
         logger.info(

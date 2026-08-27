@@ -153,7 +153,7 @@ class LogisticRegressionModel(nn.Module):
 
 
 def create_model(
-    model_name: str = "simple_cnn", num_classes: int = 2, device: str = None
+    model_name: str = "simple_cnn", num_classes: int = 2, device: str = None, pretrained: bool = False
 ) -> nn.Module:
     """
     Factory function to create model
@@ -162,6 +162,7 @@ def create_model(
         model_name: Name of model ("simple_cnn", "resnet18", or "logistic_regression")
         num_classes: Number of output classes
         device: Device to put model on
+        pretrained: Whether to download ImageNet pretrained weights (set False when loading checkpoint weights)
 
     Returns:
         Initialized model
@@ -169,7 +170,7 @@ def create_model(
     if model_name == "simple_cnn":
         model = SimpleCNN(num_classes=num_classes)
     elif model_name == "resnet18":
-        model = ResNetBaseline(num_classes=num_classes, pretrained=True)
+        model = ResNetBaseline(num_classes=num_classes, pretrained=pretrained)
     elif model_name == "logistic_regression":
         model = LogisticRegressionModel(num_classes=num_classes)
     else:
