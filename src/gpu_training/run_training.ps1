@@ -43,7 +43,7 @@ Write-Host "  - Batch Size     : $BatchSize" -ForegroundColor Gray
 Write-Host "  - Learning Rate  : $LR" -ForegroundColor Gray
 Write-Host "----------------------------------------------------------" -ForegroundColor Cyan
 
-python gpu_training/train_gpu.py `
+python -m src.gpu_training.train_gpu `
     --data-dir $DataDir `
     --output-dir $OutputDir `
     --epochs $Epochs `

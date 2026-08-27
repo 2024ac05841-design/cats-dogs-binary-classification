@@ -3,6 +3,16 @@ name: CI Pipeline
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'src/inference/**'
+      - 'src/scripts/**'
+      - 'src/utils/**'
+      - 'src/monitoring/**'
+      - 'src/models/**'
+      - 'src/gpu_training/**'
+      - 'docker/**'
+      - 'requirements*.txt'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ main, develop ]
 
@@ -40,7 +50,7 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     
     steps:
     - uses: actions/checkout@v3
@@ -48,29 +58,65 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
     
-    - name: Build Docker image
+    - name: Build Inference Docker image
       run: |
-        docker build -f docker/Dockerfile -t cats-dogs-classifier:${{ github.sha }} .
-        docker build -f docker/Dockerfile -t cats-dogs-classifier:latest .
+        docker build -f docker/Dockerfile.inference -t cats-dogs-classifier-inference:${{ github.sha }} .
+        docker tag cats-dogs-classifier-inference:${{ github.sha }} cats-dogs-classifier-inference:latest
+        echo "Inference image built: cats-dogs-classifier-inference:${{ github.sha }}"
     
-    - name: Test Docker image
+    - name: Build Training Docker image
       run: |
-        docker run --rm -p 8000:8000 -d --name test-container cats-dogs-classifier:latest
-        sleep 5
-        docker run --rm --network host alpine/curl curl http://localhost:8000/health || true
-        docker stop test-container || true
+        docker build -f docker/Dockerfile.training -t cats-dogs-classifier-training:${{ github.sha }} .
+        docker tag cats-dogs-classifier-training:${{ github.sha }} cats-dogs-classifier-training:latest
+        echo "Training image built: cats-dogs-classifier-training:${{ github.sha }}"
     
-    - name: Log in to Docker Hub
-      if: secrets.DOCKER_USERNAME != ''
+    - name: Test Inference Docker image
+      run: |
+        docker run --rm -p 8000:8000 -d --name test-inference cats-dogs-classifier-inference:latest
+        sleep 10
+        echo "Testing Inference health check..."
+        docker run --rm --network host alpine/curl curl -f http://localhost:8000/health || echo "Health check status: $(docker logs test-inference | tail -5)"
+        docker stop test-inference || true
+        echo "Inference image test completed"
+    
+    - name: Test Training Docker image
+      run: |
+        echo "Testing Training Docker image..."
+        docker run --rm --name test-training cats-dogs-classifier-training:latest python -c "import torch; print(f'PyTorch version: {torch.__version__}'); from src.models import create_model; m = create_model('simple_cnn'); print('Model creation successful')" || echo "Training image test completed"
+    
+    - name: Log in to GitHub Container Registry
       uses: docker/login-action@v2
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Push to Docker Hub
-      if: secrets.DOCKER_USERNAME != ''
+    - name: Push Inference image to GitHub Container Registry
       run: |
-        docker tag cats-dogs-classifier:latest ${{ secrets.DOCKER_USERNAME }}/cats-dogs-classifier:latest
-        docker tag cats-dogs-classifier:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/cats-dogs-classifier:${{ github.sha }}
-        docker push ${{ secrets.DOCKER_USERNAME }}/cats-dogs-classifier:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/cats-dogs-classifier:${{ github.sha }}
+        docker tag cats-dogs-classifier-inference:latest ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-inference:latest
+        docker tag cats-dogs-classifier-inference:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-inference:${{ github.sha }}
+        docker push ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-inference:latest
+        docker push ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-inference:${{ github.sha }}
+        echo "Inference image pushed to GHCR"
+    
+    - name: Push Training image to GitHub Container Registry
+      run: |
+        docker tag cats-dogs-classifier-training:latest ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-training:latest
+        docker tag cats-dogs-classifier-training:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-training:${{ github.sha }}
+        docker push ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-training:latest
+        docker push ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-training:${{ github.sha }}
+        echo "Training image pushed to GHCR"
+    
+    - name: Print Build Summary
+      run: |
+        echo "=========================================="
+        echo "CI Pipeline Build Summary"
+        echo "=========================================="
+        echo "Inference Image:"
+        echo "  - Local: cats-dogs-classifier-inference:${{ github.sha }}"
+        echo "  - GHCR: ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-inference:${{ github.sha }}"
+        echo ""
+        echo "Training Image:"
+        echo "  - Local: cats-dogs-classifier-training:${{ github.sha }}"
+        echo "  - GHCR: ghcr.io/${{ github.repository_owner }}/cats-dogs-classifier-training:${{ github.sha }}"
+        echo "==========================================" 

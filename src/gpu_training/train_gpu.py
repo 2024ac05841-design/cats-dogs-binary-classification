@@ -22,10 +22,7 @@ from torch.utils.data import DataLoader
 from torchvision import models
 
 # Import local dataset utilities
-try:
-    from dataset import build_dataloaders
-except ImportError:
-    from gpu_training.dataset import build_dataloaders
+from .dataset import build_dataloaders
 
 # Setup logging
 logging.basicConfig(
