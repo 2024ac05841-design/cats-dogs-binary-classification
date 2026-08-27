@@ -4,12 +4,8 @@ on:
   push:
     branches: [ Main ]
     paths:
-      - 'src/inference/**'
-      - 'src/scripts/**'
-      - 'src/utils/**'
-      - 'src/monitoring/**'
-      - 'src/models/**'
-      - 'src/gpu_training/**'
+      - 'src/**'
+      - 'tests/**'
       - 'docker/**'
       - 'requirements*.txt'
       - '.github/workflows/ci.yml'
@@ -50,7 +46,7 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/Main')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/Main') && !contains(join(github.event.head_commit.modified, ' '), 'tests')
     
     steps:
     - uses: actions/checkout@v3
