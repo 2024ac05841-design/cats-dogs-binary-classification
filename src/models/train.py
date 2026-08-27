@@ -372,8 +372,11 @@ def train_multiple_models(
         logger.info(f"{'='*60}")
 
         try:
-            temp_path = f"models/temp_{model_name}.pkl"
-            Path("models").mkdir(parents=True, exist_ok=True)
+            # Create best_model_dir if it doesn't exist
+            Path(best_model_dir).mkdir(parents=True, exist_ok=True)
+            
+            # Use best_model_dir for temporary model files
+            temp_path = os.path.join(best_model_dir, f"temp_{model_name}.pkl")
 
             model = create_model(model_name=model_name, device=device)
             trainer = Trainer(model, device=device, model_name=model_name)
@@ -416,9 +419,6 @@ def train_multiple_models(
         logger.info(f"Validation Loss: {best_model_info['val_loss']:.4f}")
         logger.info(f"{'='*60}\n")
 
-        # Create best model directory
-        Path(best_model_dir).mkdir(parents=True, exist_ok=True)
-
         # Copy best model
         best_model_name = f"best_model_{best_model_info['name']}.pkl"
         best_model_path = Path(best_model_dir) / best_model_name
@@ -443,7 +443,7 @@ def train_multiple_models(
 
     # Cleanup temporary model files
     for model_name in model_names:
-        temp_path = f"models/temp_{model_name}.pkl"
+        temp_path = os.path.join(best_model_dir, f"temp_{model_name}.pkl")
         if Path(temp_path).exists():
             Path(temp_path).unlink()
             logger.info(f"Cleaned up {temp_path}")

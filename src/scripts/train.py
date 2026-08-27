@@ -36,6 +36,13 @@ def main():
     )
     
     parser.add_argument(
+        '--output-path',
+        type=str,
+        default=None,
+        help='Output path for models (alias for --best-model-dir, takes precedence if provided)'
+    )
+    
+    parser.add_argument(
         '--epochs',
         type=int,
         default=20,
@@ -58,9 +65,12 @@ def main():
     
     args = parser.parse_args()
     
+    # Handle output-path as an alias for best-model-dir (--output-path takes precedence)
+    best_model_dir = args.output_path if args.output_path else args.best_model_dir
+    
     logger.info("Starting multi-model training...")
     logger.info(f"Data directory: {args.data_dir}")
-    logger.info(f"Best model directory: {args.best_model_dir}")
+    logger.info(f"Best model directory: {best_model_dir}")
     logger.info(f"Epochs: {args.epochs}")
     logger.info(f"Batch size: {args.batch_size}")
     logger.info(f"Learning rate: {args.lr}")
@@ -71,7 +81,7 @@ def main():
             epochs=args.epochs,
             batch_size=args.batch_size,
             lr=args.lr,
-            best_model_dir=args.best_model_dir
+            best_model_dir=best_model_dir
         )
         logger.info("Training completed successfully!")
         logger.info(f"Results: {results}")

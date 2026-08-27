@@ -18,6 +18,7 @@ spec:
         app: cats-dogs-training
     spec:
       backoffLimit: 2
+      ttlSecondsAfterFinished: 2592000  # 30 days - prevents auto-deletion of pods
       template:
         metadata:
           labels:
@@ -50,6 +51,8 @@ spec:
               value: "http://mlflow:5000"
             - name: MLFLOW_EXPERIMENT
               value: "cats-dogs-k8s"
+            - name: GIT_PYTHON_REFRESH
+              value: "quiet"
             
             resources:
               requests:
