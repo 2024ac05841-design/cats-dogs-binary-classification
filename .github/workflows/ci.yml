@@ -43,10 +43,27 @@ jobs:
         files: ./coverage.xml
         fail_ci_if_error: false
 
-  build:
-    needs: test
+  detect-changes:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Main'
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/Main') && !contains(join(github.event.head_commit.modified, ' '), 'tests')
+    outputs:
+      build_images: ${{ steps.filter.outputs.build_images }}
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          build_images:
+            - 'src/**'
+            - 'docker/**'
+            - 'requirements*.txt'
+            - '.github/workflows/ci.yml'
+
+  build:
+    needs: [test, detect-changes]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Main' && needs.detect-changes.outputs.build_images == 'true'
     
     steps:
     - uses: actions/checkout@v3
