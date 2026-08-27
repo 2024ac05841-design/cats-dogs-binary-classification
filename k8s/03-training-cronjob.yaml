@@ -28,7 +28,7 @@ spec:
           
           containers:
           - name: training-job
-            image: localhost:5000/cats-dogs-trainer:latest
+            image: 172.17.0.2:5000/cats-dogs-trainer:latest
             imagePullPolicy: Always
             
             command:
