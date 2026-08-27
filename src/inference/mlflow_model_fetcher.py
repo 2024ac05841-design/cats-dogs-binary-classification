@@ -1,14 +1,14 @@
-"""MLflow Model Fetcher with Version Tracking
+"""MLflow Model Fetcher with Registry and Version Tracking
 
-Fetches the best model from MLFlow on startup and caches it locally.
-Only downloads if model version changes, avoiding unnecessary transfers.
-Falls back to local model if MLFlow is unavailable.
+Fetches the best model from MLFlow (via Model Registry or Experiment search) on startup.
+Caches it in persistent volume or local path. Only downloads if the model version has changed.
+Falls back safely to local packaged model if MLFlow is temporarily unavailable.
 """
 
-import logging
 import os
 import json
 import shutil
+import logging
 from pathlib import Path
 from typing import Optional, Tuple
 from datetime import datetime
@@ -24,342 +24,287 @@ logger = logging.getLogger(__name__)
 
 
 class MLFlowModelFetcher:
-    """Fetch and cache best model from MLFlow"""
+    """Fetch and cache best model from MLFlow Model Registry or Experiment Runs"""
 
     def __init__(
         self,
         mlflow_uri: str = "http://mlflow:5000",
+        registered_model_name: str = "cats-dogs-best-model",
         experiment_name: str = "cats-dogs-k8s",
+        model_stage: str = "Production",
         cache_dir: str = "/app-models",
         version_file: str = "model_version.json",
     ):
-        """
-        Initialize MLFlow model fetcher
-
-        Args:
-            mlflow_uri: MLFlow tracking server URI
-            experiment_name: Name of the experiment containing trained models
-            cache_dir: Directory to cache the downloaded model
-            version_file: JSON file to track model version/checksum
-        """
         self.mlflow_uri = mlflow_uri
+        self.registered_model_name = registered_model_name
         self.experiment_name = experiment_name
+        self.model_stage = model_stage
         self.cache_dir = Path(cache_dir)
         self.version_file = self.cache_dir / version_file
         self.model_path = self.cache_dir / "model.pkl"
         self.client = None
-        self.experiment_id = None
 
-        # Create cache directory if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize MLFlow client if available
         if MLFLOW_AVAILABLE:
             try:
-                mlflow.set_tracking_uri(mlflow_uri)
-                self.client = MlflowClient(tracking_uri=mlflow_uri)
-                logger.info(f"MLFlow client initialized with URI: {mlflow_uri}")
+                mlflow.set_tracking_uri(self.mlflow_uri)
+                self.client = MlflowClient(tracking_uri=self.mlflow_uri)
+                logger.info(f"MLFlow client connected to URI: {self.mlflow_uri}")
             except Exception as e:
-                logger.warning(f"Failed to initialize MLFlow client: {e}")
+                logger.warning(f"Could not connect MLFlow client to {self.mlflow_uri}: {e}")
                 self.client = None
 
-    def _get_experiment_id(self) -> Optional[str]:
-        """Get experiment ID by name"""
-        if not self.client:
-            return None
-
-        try:
-            experiment = self.client.get_experiment_by_name(self.experiment_name)
-            if experiment:
-                self.experiment_id = experiment.experiment_id
-                logger.info(f"Found experiment '{self.experiment_name}' with ID: {self.experiment_id}")
-                return self.experiment_id
-            else:
-                logger.warning(f"Experiment '{self.experiment_name}' not found in MLFlow")
-                return None
-        except Exception as e:
-            logger.warning(f"Error getting experiment ID: {e}")
-            return None
-
-    def _find_best_model(self) -> Optional[Tuple[str, str, float]]:
-        """
-        Find best model run in experiment
-
-        Returns:
-            Tuple of (run_id, model_name, val_accuracy) or None if not found
-        """
-        if not self.client or not self.experiment_id:
-            return None
-
-        try:
-            runs = self.client.search_runs(
-                experiment_ids=[self.experiment_id],
-                order_by=["metrics.val_acc DESC"],
-                max_results=100,
-            )
-
-            if not runs:
-                logger.warning("No runs found in experiment")
-                return None
-
-            # Find run with best model tag
-            for run in runs:
-                tags = run.data.tags or {}
-                if tags.get("type") == "best_model":
-                    run_id = run.info.run_id
-                    model_name = tags.get("model_name", "unknown")
-                    val_acc = run.data.metrics.get("val_acc", 0.0)
-                    logger.info(
-                        f"Found best model: {model_name} (run: {run_id}, val_acc: {val_acc:.4f})"
-                    )
-                    return run_id, model_name, val_acc
-
-            # If no tagged best model, use highest val_acc
-            if runs:
-                best_run = runs[0]
-                run_id = best_run.info.run_id
-                model_name = best_run.params.get("model_name", "unknown")
-                val_acc = best_run.data.metrics.get("val_acc", 0.0)
-                logger.info(
-                    f"Using highest val_acc model: {model_name} "
-                    f"(run: {run_id}, val_acc: {val_acc:.4f})"
-                )
-                return run_id, model_name, val_acc
-
-            return None
-
-        except Exception as e:
-            logger.warning(f"Error finding best model: {e}")
-            return None
-
-    def _get_model_artifact(
-        self, run_id: str, artifact_name: str = "best_model.pkl"
-    ) -> Optional[str]:
-        """
-        Download model artifact from MLFlow
-
-        Args:
-            run_id: MLFlow run ID
-            artifact_name: Name of the model artifact file
-
-        Returns:
-            Path to downloaded model or None
-        """
-        if not self.client:
-            return None
-
-        try:
-            # Download artifact to cache directory
-            local_model_path = self.client.download_artifacts(
-                run_id=run_id,
-                path=artifact_name,
-                dst_path=str(self.cache_dir),
-            )
-
-            # MLFlow creates a subdirectory structure, flatten it
-            downloaded_file = Path(local_model_path)
-            if downloaded_file.is_dir():
-                # Find the actual model file
-                pkl_files = list(downloaded_file.glob("*.pkl"))
-                if pkl_files:
-                    model_file = pkl_files[0]
-                    shutil.copy(model_file, self.model_path)
-                    logger.info(f"Model artifact downloaded to {self.model_path}")
-                    return str(self.model_path)
-            else:
-                # Direct file
-                shutil.copy(downloaded_file, self.model_path)
-                logger.info(f"Model artifact downloaded to {self.model_path}")
-                return str(self.model_path)
-
-            return None
-
-        except Exception as e:
-            logger.warning(f"Error downloading model artifact: {e}")
-            return None
-
     def _load_cached_version(self) -> Optional[dict]:
-        """Load cached model version information"""
+        """Load cached model version metadata if present"""
         if not self.version_file.exists():
             return None
-
         try:
             with open(self.version_file, "r") as f:
-                version_info = json.load(f)
-            logger.debug(f"Loaded cached version info: {version_info}")
-            return version_info
+                return json.load(f)
         except Exception as e:
-            logger.warning(f"Error loading version file: {e}")
+            logger.warning(f"Could not read version file: {e}")
             return None
 
-    def _save_version(self, run_id: str, model_name: str, val_acc: float):
-        """Save model version information"""
-        version_info = {
+    def _save_version(
+        self,
+        version: str,
+        run_id: str,
+        model_name: str,
+        val_acc: Optional[float] = None,
+        source: str = "mlflow_registry",
+    ):
+        """Record model version metadata in the cache directory"""
+        metadata = {
+            "version": str(version),
             "run_id": run_id,
             "model_name": model_name,
             "val_accuracy": val_acc,
-            "fetched_at": datetime.now().isoformat(),
+            "source": source,
+            "downloaded_at": datetime.now().isoformat(),
             "mlflow_uri": self.mlflow_uri,
-            "experiment_name": self.experiment_name,
         }
-
         try:
             with open(self.version_file, "w") as f:
-                json.dump(version_info, f, indent=2)
-            logger.info(f"Saved version info: {version_info}")
+                json.dump(metadata, f, indent=2)
+            logger.info(f"Updated cache model metadata: {metadata}")
         except Exception as e:
-            logger.warning(f"Error saving version file: {e}")
+            logger.warning(f"Could not write version file: {e}")
 
-    def _version_changed(
-        self, new_run_id: str, new_val_acc: float, cached_version: dict
-    ) -> bool:
-        """Check if model version has changed"""
-        if not cached_version:
-            logger.info("No cached version, need to fetch new model")
+    def _extract_downloaded_model(self, downloaded_path: str) -> bool:
+        """Helper to copy downloaded artifact into destination model.pkl"""
+        src = Path(downloaded_path)
+        if src.is_dir():
+            candidates = list(src.rglob("*.pkl"))
+            if candidates:
+                chosen = next((c for c in candidates if "best_model" in c.name), candidates[0])
+                shutil.copy2(chosen, self.model_path)
+                logger.info(f"Extracted artifact {chosen.name} -> {self.model_path}")
+                return True
+        elif src.is_file():
+            shutil.copy2(src, self.model_path)
+            logger.info(f"Copied artifact {src.name} -> {self.model_path}")
             return True
-
-        cached_run_id = cached_version.get("run_id")
-        cached_val_acc = cached_version.get("val_accuracy", 0.0)
-
-        # Version changed if:
-        # 1. Different run_id (new training)
-        # 2. Same run but different accuracy (data changed)
-        if cached_run_id != new_run_id:
-            logger.info(f"Model version changed: {cached_run_id} → {new_run_id}")
-            return True
-
-        if abs(cached_val_acc - new_val_acc) > 0.0001:  # Small tolerance for float comparison
-            logger.info(f"Model accuracy changed: {cached_val_acc:.6f} → {new_val_acc:.6f}")
-            return True
-
-        logger.info("Model version unchanged, using cached version")
         return False
 
-    def _has_local_model(self) -> bool:
-        """Check if local model file exists"""
-        return self.model_path.exists()
+    def _fetch_from_registry(self) -> Optional[Tuple[str, dict]]:
+        """Attempt to fetch the latest/production version from Model Registry"""
+        if not self.client:
+            return None
+
+        try:
+            latest_versions = self.client.get_latest_versions(
+                name=self.registered_model_name,
+                stages=[self.model_stage] if self.model_stage else ["Production", "None"],
+            )
+
+            if not latest_versions:
+                latest_versions = self.client.get_latest_versions(name=self.registered_model_name)
+
+            if not latest_versions:
+                logger.info(f"No versions found for registered model '{self.registered_model_name}'")
+                return None
+
+            target_version_obj = max(latest_versions, key=lambda v: int(v.version))
+            v_num = str(target_version_obj.version)
+            run_id = target_version_obj.run_id
+            tags = target_version_obj.tags or {}
+            arch = tags.get("architecture", "resnet18")
+
+            logger.info(
+                f"Found Registered Model '{self.registered_model_name}' Version {v_num} "
+                f"(Stage: {target_version_obj.current_stage}, Run ID: {run_id}, Arch: {arch})"
+            )
+
+            cached = self._load_cached_version()
+            if cached and cached.get("version") == v_num and self.model_path.exists():
+                logger.info(f"✅ Model version {v_num} already cached in volume. Skipping download.")
+                info = {
+                    "source": "registry_cached",
+                    "model_name": cached.get("model_name", arch),
+                    "version": v_num,
+                    "run_id": run_id,
+                    "cached": True,
+                    "val_accuracy": cached.get("val_accuracy"),
+                    "message": f"Using cached registry model version {v_num}",
+                }
+                return str(self.model_path), info
+
+            logger.info(f"⬇️ Downloading Registered Model '{self.registered_model_name}' v{v_num}...")
+            
+            for candidate_art in ["best_model.pkl", f"best_model_{arch}.pkl", "model"]:
+                try:
+                    downloaded = self.client.download_artifacts(run_id, candidate_art, dst_path=str(self.cache_dir))
+                    if self._extract_downloaded_model(downloaded):
+                        break
+                except Exception as e:
+                    logger.debug(f"Artifact {candidate_art} download trial: {e}")
+
+            if not self.model_path.exists():
+                downloaded = self.client.download_artifacts(run_id, "", dst_path=str(self.cache_dir))
+                self._extract_downloaded_model(downloaded)
+
+            if self.model_path.exists():
+                val_acc = None
+                try:
+                    run_data = self.client.get_run(run_id).data
+                    val_acc = run_data.metrics.get("val_acc") or run_data.metrics.get("val_accuracy")
+                    arch = run_data.params.get("model_name", arch)
+                except Exception:
+                    pass
+
+                self._save_version(version=v_num, run_id=run_id, model_name=arch, val_acc=val_acc)
+                info = {
+                    "source": "registry_fresh",
+                    "model_name": arch,
+                    "version": v_num,
+                    "run_id": run_id,
+                    "cached": False,
+                    "val_accuracy": val_acc,
+                    "message": f"Successfully downloaded registry model version {v_num}",
+                }
+                return str(self.model_path), info
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch from model registry: {e}")
+
+        return None
+
+    def _fetch_from_experiment_runs(self) -> Optional[Tuple[str, dict]]:
+        """Fallback to searching runs in the experiment"""
+        if not self.client:
+            return None
+
+        try:
+            exp = self.client.get_experiment_by_name(self.experiment_name)
+            if not exp:
+                return None
+
+            runs = self.client.search_runs(
+                experiment_ids=[exp.experiment_id],
+                order_by=["metrics.val_acc DESC", "metrics.val_accuracy DESC"],
+                max_results=50,
+            )
+            if not runs:
+                return None
+
+            best_run = runs[0]
+            for r in runs:
+                if (r.data.tags or {}).get("type") == "best_model":
+                    best_run = r
+                    break
+
+            run_id = best_run.info.run_id
+            model_name = best_run.params.get("model_name", "resnet18")
+            val_acc = best_run.data.metrics.get("val_acc") or best_run.data.metrics.get("val_accuracy", 0.0)
+
+            cached = self._load_cached_version()
+            if cached and cached.get("run_id") == run_id and self.model_path.exists():
+                logger.info(f"✅ Experiment run {run_id} already cached. Skipping download.")
+                return str(self.model_path), {
+                    "source": "experiment_cached",
+                    "model_name": cached.get("model_name", model_name),
+                    "run_id": run_id,
+                    "cached": True,
+                    "val_accuracy": val_acc,
+                }
+
+            logger.info(f"⬇️ Downloading best model from run {run_id} ({model_name})...")
+            for art in ["best_model.pkl", f"best_model_{model_name}.pkl", ""]:
+                try:
+                    dl = self.client.download_artifacts(run_id, art, dst_path=str(self.cache_dir))
+                    if self._extract_downloaded_model(dl):
+                        break
+                except Exception:
+                    pass
+
+            if self.model_path.exists():
+                self._save_version(version="run-" + run_id[:8], run_id=run_id, model_name=model_name, val_acc=val_acc)
+                return str(self.model_path), {
+                    "source": "experiment_fresh",
+                    "model_name": model_name,
+                    "run_id": run_id,
+                    "cached": False,
+                    "val_accuracy": val_acc,
+                }
+
+        except Exception as e:
+            logger.warning(f"Experiment search fallback error: {e}")
+
+        return None
 
     def fetch_best_model(self) -> Tuple[bool, str, dict]:
         """
-        Fetch best model from MLFlow with caching
-
-        Returns:
-            Tuple of (success: bool, model_path: str, info: dict)
-            - success: True if model loaded successfully
-            - model_path: Path to the model file (cached or local fallback)
-            - info: Dictionary with model information
+        Orchestrate model fetch:
+        1. MLFlow Model Registry ('cats-dogs-best-model')
+        2. MLFlow Experiment Runs ('cats-dogs-k8s')
+        3. Local PV / Cached / Packaged weights fallback
         """
-        info = {
-            "source": "unknown",
-            "model_name": None,
-            "val_accuracy": None,
-            "run_id": None,
-            "cached": False,
-            "message": "",
-        }
+        reg_result = self._fetch_from_registry()
+        if reg_result:
+            return True, reg_result[0], reg_result[1]
 
-        # Step 1: Check if MLFlow is available
-        if not MLFLOW_AVAILABLE:
-            logger.warning("MLFlow not available, using local model")
-            info["source"] = "local_fallback"
-            info["message"] = "MLFlow not installed"
+        exp_result = self._fetch_from_experiment_runs()
+        if exp_result:
+            return True, exp_result[0], exp_result[1]
 
-            if self._has_local_model():
-                info["cached"] = True
-                return True, str(self.model_path), info
+        if self.model_path.exists():
+            cached = self._load_cached_version() or {}
+            logger.info("Using existing model file in persistent cache volume.")
+            return True, str(self.model_path), {
+                "source": "volume_cached",
+                "model_name": cached.get("model_name", "resnet18"),
+                "version": cached.get("version", "unknown"),
+                "cached": True,
+            }
 
-            return False, "", info
+        for bundled_candidate in ["models/best_model.pkl", "src/models/best_model.pkl"]:
+            b_path = Path(bundled_candidate)
+            if b_path.exists():
+                shutil.copy2(b_path, self.model_path)
+                logger.info(f"Copied bundled fallback model {bundled_candidate} to {self.model_path}")
+                return True, str(self.model_path), {
+                    "source": "bundled_fallback",
+                    "model_name": "resnet18",
+                    "cached": True,
+                }
 
-        # Step 2: Try to connect to MLFlow
-        if not self.client:
-            logger.warning("MLFlow client not initialized, using local model")
-            info["source"] = "local_fallback"
-            info["message"] = "Failed to connect to MLFlow"
-
-            if self._has_local_model():
-                info["cached"] = True
-                return True, str(self.model_path), info
-
-            return False, "", info
-
-        # Step 3: Get experiment ID
-        if not self._get_experiment_id():
-            logger.warning("Experiment not found, using local model")
-            info["source"] = "local_fallback"
-            info["message"] = f"Experiment '{self.experiment_name}' not found"
-
-            if self._has_local_model():
-                info["cached"] = True
-                return True, str(self.model_path), info
-
-            return False, "", info
-
-        # Step 4: Find best model
-        best_model_info = self._find_best_model()
-        if not best_model_info:
-            logger.warning("No best model found in experiment, using local model")
-            info["source"] = "local_fallback"
-            info["message"] = "No runs found in experiment"
-
-            if self._has_local_model():
-                info["cached"] = True
-                return True, str(self.model_path), info
-
-            return False, "", info
-
-        run_id, model_name, val_acc = best_model_info
-        info["run_id"] = run_id
-        info["model_name"] = model_name
-        info["val_accuracy"] = val_acc
-
-        # Step 5: Check if version changed
-        cached_version = self._load_cached_version()
-        if not self._version_changed(run_id, val_acc, cached_version):
-            # Use cached model
-            info["source"] = "mlflow_cached"
-            info["cached"] = True
-            info["message"] = f"Using cached {model_name} model"
-            logger.info(f"Using cached model: {model_name}")
-            return True, str(self.model_path), info
-
-        # Step 6: Download new model
-        logger.info(f"Downloading best model: {model_name} from MLFlow...")
-        model_path = self._get_model_artifact(run_id)
-
-        if model_path:
-            self._save_version(run_id, model_name, val_acc)
-            info["source"] = "mlflow_fresh"
-            info["cached"] = False
-            info["message"] = f"Downloaded new {model_name} model from MLFlow"
-            logger.info(f"Successfully downloaded model: {model_name}")
-            return True, model_path, info
-        else:
-            # Download failed, try local model
-            logger.warning("Failed to download model, using local model")
-            info["source"] = "local_fallback"
-            info["message"] = "Failed to download from MLFlow, using cached version"
-
-            if self._has_local_model():
-                info["cached"] = True
-                return True, str(self.model_path), info
-
-            return False, "", info
+        return False, "", {"source": "none", "message": "No model found in MLFlow or local storage"}
 
 
 def load_model_with_mlflow(
     mlflow_uri: str = "http://mlflow:5000",
+    registered_model_name: str = "cats-dogs-best-model",
     experiment_name: str = "cats-dogs-k8s",
+    model_stage: str = "Production",
     cache_dir: str = "/app-models",
 ) -> Tuple[bool, str, dict]:
-    """
-    Convenience function to load model with MLFlow
-
-    Returns:
-        Tuple of (success, model_path, info)
-    """
+    """Convenience helper function"""
     fetcher = MLFlowModelFetcher(
         mlflow_uri=mlflow_uri,
+        registered_model_name=registered_model_name,
         experiment_name=experiment_name,
+        model_stage=model_stage,
         cache_dir=cache_dir,
     )
     return fetcher.fetch_best_model()

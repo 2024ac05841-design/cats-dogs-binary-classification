@@ -45,7 +45,7 @@ class HealthResponse(BaseModel):
 
 
 def load_model_on_startup():
-    """Load model on startup, fetching from MLFlow with caching"""
+    """Load model on startup, fetching from MLFlow Model Registry with volume caching"""
     global model, device, model_info
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -53,15 +53,22 @@ def load_model_on_startup():
 
     # Get MLFlow configuration from environment
     mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+    registered_model_name = os.getenv("REGISTERED_MODEL_NAME", "cats-dogs-best-model")
     experiment_name = os.getenv("EXPERIMENT_NAME", "cats-dogs-k8s")
-    cache_dir = os.getenv("MODEL_PATH", "models").rsplit("/", 1)[0]  # Get parent directory
+    model_stage = os.getenv("MODEL_STAGE", "Production")
+    cache_dir = os.getenv("MODEL_PATH", "/app-models/model.pkl").rsplit("/", 1)[0]
 
-    logger.info(f"Attempting to fetch best model from MLFlow: {mlflow_uri}")
+    logger.info(
+        f"Attempting to fetch best model '{registered_model_name}' (stage: {model_stage}) "
+        f"from MLFlow: {mlflow_uri}"
+    )
 
-    # Try to fetch model from MLFlow with smart caching
+    # Fetch model from MLFlow registry or volume cache
     success, model_path, info = load_model_with_mlflow(
         mlflow_uri=mlflow_uri,
+        registered_model_name=registered_model_name,
         experiment_name=experiment_name,
+        model_stage=model_stage,
         cache_dir=cache_dir,
     )
 
@@ -76,31 +83,32 @@ def load_model_on_startup():
 
     # Load the model architecture and weights
     try:
-        # Determine model type from MLFlow info or default to simple_cnn
-        model_name = model_info.get("model_name", "simple_cnn")
-        if model_name.startswith("resnet"):
+        raw_name = str(model_info.get("model_name", "resnet18")).lower()
+        if "resnet" in raw_name:
             model_name = "resnet18"
-        elif model_name.startswith("logistic"):
+        elif "mobile" in raw_name:
+            model_name = "resnet18"  # fallback or create resnet architecture
+        elif "logistic" in raw_name:
             model_name = "logistic_regression"
         else:
             model_name = "simple_cnn"
 
-        logger.info(f"Creating {model_name} model architecture")
+        logger.info(f"Instantiating {model_name} architecture...")
         model = create_model(model_name=model_name, device=device)
 
-        # Load pretrained weights
+        # Load weights
         state_dict = torch.load(model_path, map_location=device, weights_only=False)
         model.load_state_dict(state_dict)
         model.eval()
 
         logger.info(
-            f"Model loaded successfully from {model_info['source']}: {model_name} "
-            f"(val_acc: {model_info.get('val_accuracy', 'N/A')}) "
+            f"✅ Model loaded successfully from {model_info.get('source')}: {model_name} "
+            f"(val_acc: {model_info.get('val_accuracy', 'N/A')}, version: {model_info.get('version', 'N/A')}) "
             f"- {model_info.get('message', '')}"
         )
 
     except Exception as e:
-        logger.error(f"Error loading model weights: {e}")
+        logger.error(f"Error loading model weights: {e}", exc_info=True)
         logger.warning("Creating untrained model as fallback")
         model_info["source"] = "untrained_fallback"
         model_info["message"] = f"Failed to load weights: {str(e)}"

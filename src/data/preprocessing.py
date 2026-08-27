@@ -51,6 +51,8 @@ class CatsDogsDataset(Dataset):
             image = Image.open(img_path).convert("RGB")
             if self.transform:
                 image = self.transform(image)
+            else:
+                image = transforms.ToTensor()(image)
             return image, label
         except Exception as e:
             logger.error(f"Error loading image {img_path}: {e}")

@@ -79,8 +79,12 @@ def predict(
         Tuple of (class_name, confidence, probabilities_dict)
     """
     if device is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        try:
+            device = next(model.parameters()).device
+        except StopIteration:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    model = model.to(device)
     image_tensor = image_tensor.to(device)
 
     with torch.no_grad():

@@ -28,6 +28,14 @@ spec:
           value: "/app/models/model.pkl"
         - name: PYTHONUNBUFFERED
           value: "1"
+        - name: MLFLOW_TRACKING_URI
+          value: "http://mlflow:5000"
+        - name: REGISTERED_MODEL_NAME
+          value: "cats-dogs-best-model"
+        - name: MODEL_STAGE
+          value: "Production"
+        - name: EXPERIMENT_NAME
+          value: "cats-dogs-k8s"
         resources:
           requests:
             cpu: 100m

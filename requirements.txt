@@ -1,6 +1,9 @@
-# Core ML Libraries
-torch==2.0.1
-torchvision==0.15.2
+# CPU-Optimized Requirements for Cats vs Dogs Classification & Inference
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Core ML Libraries (CPU-only PyTorch)
+torch==2.0.1+cpu
+torchvision==0.15.2+cpu
 numpy==1.24.3
 pandas==2.0.3
 Pillow==10.0.0
@@ -10,7 +13,7 @@ fastapi==0.103.0
 uvicorn==0.23.2
 pydantic==2.3.0
 
-# Experiment Tracking
+# Experiment Tracking & Model Registry
 mlflow==2.7.0
 
 # Data versioning

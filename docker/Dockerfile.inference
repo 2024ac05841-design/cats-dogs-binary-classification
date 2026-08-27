@@ -3,38 +3,39 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
+# Install minimal system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
+# Copy inference requirements with CPU-optimized PyTorch
 COPY requirements.txt .
 
-# Install Python dependencies with BuildKit cache mount
-# BuildKit will cache pip packages across builds
+# Install dependencies using BuildKit pip cache
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application source code and baseline fallback models
 COPY src ./src
 COPY models ./models
 
-# Create necessary directories
+# Create necessary directories for models cache and logs
 RUN mkdir -p logs data /app-models
 
-# Set environment variables for MLFlow model fetching
+# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV MLFLOW_TRACKING_URI=http://mlflow:5000
+ENV REGISTERED_MODEL_NAME=cats-dogs-best-model
+ENV MODEL_STAGE=Production
 ENV EXPERIMENT_NAME=cats-dogs-k8s
 ENV MODEL_PATH=/app-models/model.pkl
 
-# Expose port
+# Expose inference port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Run FastAPI application for inference
 CMD ["python", "-m", "uvicorn", "src.inference.app:app", "--host", "0.0.0.0", "--port", "8000"]
