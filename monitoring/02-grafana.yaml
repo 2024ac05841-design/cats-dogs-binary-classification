@@ -553,20 +553,20 @@ data:
         },
         {
           "id": 13,
-          "title": "Pod CPU Utilization",
+          "title": "Pod CPU Utilization (Cores)",
           "type": "timeseries",
           "gridPos": { "h": 7, "w": 12, "x": 0, "y": 33 },
           "targets": [
             {
               "datasource": "Prometheus",
-              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"cats-dogs-classification\", container=\"inference-service\"}[1m])",
-              "legendFormat": "CPU (cores) - {{pod_name}}",
+              "expr": "rate(process_cpu_seconds_total{job=\"kubernetes-pods\"}[1m]) or rate(container_cpu_usage_seconds_total{container=\"inference-service\"}[1m]) or rate(process_cpu_seconds_total[1m])",
+              "legendFormat": "{{kubernetes_pod_name}}",
               "refId": "A"
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "unit": "cores",
+              "unit": "short",
               "custom": {
                 "lineWidth": 2,
                 "fillOpacity": 15
@@ -582,8 +582,8 @@ data:
           "targets": [
             {
               "datasource": "Prometheus",
-              "expr": "container_memory_usage_bytes{namespace=\"cats-dogs-classification\", container=\"inference-service\"} / 1024 / 1024",
-              "legendFormat": "RAM (MB) - {{pod_name}}",
+              "expr": "(process_resident_memory_bytes{job=\"kubernetes-pods\"} / 1024 / 1024) or (container_memory_usage_bytes{container=\"inference-service\"} / 1024 / 1024) or (process_resident_memory_bytes / 1024 / 1024)",
+              "legendFormat": "{{kubernetes_pod_name}}",
               "refId": "A"
             }
           ],
