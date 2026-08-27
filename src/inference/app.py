@@ -57,6 +57,67 @@ class HealthResponse(BaseModel):
     message: str
 
 
+class EndpointMetadata(BaseModel):
+    health: str
+    predict: str
+    info: str
+    metrics: str
+    stats: str
+    logs: str
+    swagger_ui: str
+
+
+class DocumentationMetadata(BaseModel):
+    swagger_ui: str
+    redoc: str
+    openapi_json: str
+
+
+class InfoResponse(BaseModel):
+    service: str
+    version: str
+    device: Optional[str]
+    model_loaded: bool
+    classes: dict
+    model_info: dict
+    telemetry: dict
+    documentation: DocumentationMetadata
+    endpoints: EndpointMetadata
+
+
+class LogEntry(BaseModel):
+    timestamp: str
+    request_id: Optional[str] = None
+    client_ip: Optional[str] = None
+    class_name: Optional[str] = None
+    confidence: Optional[float] = None
+    probabilities: Optional[dict] = None
+    latency_ms: Optional[float] = None
+    model_name: Optional[str] = None
+    status: Optional[str] = None
+    error: Optional[str] = None
+    error_type: Optional[str] = None
+
+
+class LogsResponse(BaseModel):
+    total: int
+    limit: int
+    logs: list[LogEntry]
+
+
+class StatsResponse(BaseModel):
+    timestamp: str
+    uptime_seconds: float
+    total_requests: int
+    successful_predictions: int
+    errors: int
+    class_distribution: dict
+    average_latency_ms: float
+    success_rate: float
+    model_info: dict
+    recent_logs_count: int
+
+
 def load_model_on_startup():
     """Load model on startup, fetching from MLFlow Model Registry with volume caching"""
     global model, device, model_info
@@ -359,6 +420,7 @@ async def metrics():
 
 @app.get(
     "/logs",
+    response_model=LogsResponse,
     tags=["Monitoring & Observability"],
     summary="Recent Structured Request & Response Logs",
     description="Returns the last N structured JSON logs including request ID, predicted class, confidence, and latency.",
@@ -375,6 +437,7 @@ async def get_logs(limit: int = 50):
 
 @app.get(
     "/stats",
+    response_model=StatsResponse,
     tags=["Monitoring & Observability"],
     summary="Live Telemetry & Aggregated Statistics",
     description="Returns real-time aggregated metrics such as total requests, class distribution, moving average latency, and model metadata.",
@@ -386,6 +449,7 @@ async def stats():
 
 @app.get(
     "/info",
+    response_model=InfoResponse,
     tags=["Service Health & Info"],
     summary="Model Architecture & Service Metadata",
     description="Provides detailed information regarding active model weights, MLFlow registry version, device (CPU/GPU), and available endpoints.",
