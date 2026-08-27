@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
     paths:
       - 'src/inference/**'
       - 'src/scripts/**'
@@ -14,7 +14,7 @@ on:
       - 'requirements*.txt'
       - '.github/workflows/ci.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -50,7 +50,7 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main')
     
     steps:
     - uses: actions/checkout@v3
