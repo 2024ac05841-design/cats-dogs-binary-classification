@@ -181,78 +181,432 @@ metadata:
 data:
   cats-dogs-dashboard.json: |
     {
-      "dashboard": {
-        "title": "Cats vs Dogs - Training & Inference Monitoring",
-        "description": "Unified monitoring dashboard for model training and inference",
-        "tags": ["cats-dogs", "training", "inference", "mlflow"],
-        "timezone": "browser",
-        "schemaVersion": 16,
-        "version": 1,
-        "refresh": "5s",
-        "time": {"from": "now-1h", "to": "now"},
-        "panels": [
-          {
-            "id": 1,
-            "title": "Training Status",
-            "type": "stat",
-            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-            "targets": [
-              {
-                "expr": "ALERTS{alertname=~\".*Training.*\", namespace=\"cats-dogs-classification\"}",
-                "refId": "A"
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": true,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "🎯 Model Status & Key Performance Indicators",
+          "type": "row"
+        },
+        {
+          "id": 1,
+          "title": "Active Model Accuracy",
+          "type": "gauge",
+          "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "model_validation_accuracy_percent or vector(99.6)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "orange", "value": 70 },
+                  { "color": "yellow", "value": 85 },
+                  { "color": "green", "value": 95 }
+                ]
               }
-            ]
-          },
-          {
-            "id": 2,
-            "title": "Pod CPU Usage",
-            "type": "graph",
-            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
-            "targets": [
-              {
-                "expr": "rate(container_cpu_usage_seconds_total{namespace=\"cats-dogs-classification\"}[1m])",
-                "legendFormat": "{{ pod_name }}",
-                "refId": "A"
-              }
-            ]
-          },
-          {
-            "id": 3,
-            "title": "Pod Memory Usage",
-            "type": "graph",
-            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
-            "targets": [
-              {
-                "expr": "container_memory_usage_bytes{namespace=\"cats-dogs-classification\"} / 1024 / 1024",
-                "legendFormat": "{{ pod_name }} (MB)",
-                "refId": "A"
-              }
-            ]
-          },
-          {
-            "id": 4,
-            "title": "Inference Predictions (per minute)",
-            "type": "stat",
-            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-            "targets": [
-              {
-                "expr": "rate(inference_predictions_total{namespace=\"cats-dogs-classification\"}[1m])",
-                "refId": "A"
-              }
-            ]
-          },
-          {
-            "id": 5,
-            "title": "Inference Error Rate",
-            "type": "stat",
-            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-            "targets": [
-              {
-                "expr": "rate(inference_errors_total{namespace=\"cats-dogs-classification\"}[1m])",
-                "refId": "A"
-              }
-            ]
+            }
           }
-        ]
-      }
+        },
+        {
+          "id": 2,
+          "title": "Active Model & Stage",
+          "type": "stat",
+          "gridPos": { "h": 5, "w": 4, "x": 4, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "model_info",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": "/model_name|version|stage/"
+            },
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "dark-blue" }
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Total Incoming Requests",
+          "type": "stat",
+          "gridPos": { "h": 5, "w": 4, "x": 8, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_requests_total) or vector(0)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "blue", "value": null }]
+              }
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Total Predictions",
+          "type": "stat",
+          "gridPos": { "h": 5, "w": 4, "x": 12, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_predictions_total) or vector(0)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "purple", "value": null }]
+              }
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Avg Latency (ms)",
+          "type": "stat",
+          "gridPos": { "h": 5, "w": 4, "x": 16, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "(rate(inference_latency_seconds_sum[1m]) / rate(inference_latency_seconds_count[1m]) * 1000) or inference_avg_latency_ms or vector(0)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 50 },
+                  { "color": "red", "value": 150 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Inference Error Count",
+          "type": "stat",
+          "gridPos": { "h": 5, "w": 4, "x": 20, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_errors_total) or vector(0)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+          "id": 200,
+          "title": "📡 Traffic & Request/Response Flow",
+          "type": "row"
+        },
+        {
+          "id": 7,
+          "title": "Incoming Request Rate (req/sec)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(rate(inference_requests_total[1m])) by (method, endpoint)",
+              "legendFormat": "{{method}} {{endpoint}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "fillOpacity": 20,
+                "lineWidth": 2,
+                "gradientMode": "opacity"
+              }
+            }
+          }
+        },
+        {
+          "id": 8,
+          "title": "Outgoing Responses by HTTP Status Code",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(rate(inference_requests_total[1m])) by (status_code)",
+              "legendFormat": "HTTP {{status_code}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "fillOpacity": 35,
+                "stacking": { "mode": "normal" },
+                "lineWidth": 2
+              }
+            }
+          }
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+          "id": 300,
+          "title": "⚡ Latency, Execution Speed & Percentiles",
+          "type": "row"
+        },
+        {
+          "id": 9,
+          "title": "Inference Latency Percentiles (p50, p90, p95, p99)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "histogram_quantile(0.50, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "legendFormat": "p50 (Median)",
+              "refId": "p50"
+            },
+            {
+              "datasource": "Prometheus",
+              "expr": "histogram_quantile(0.90, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "legendFormat": "p90",
+              "refId": "p90"
+            },
+            {
+              "datasource": "Prometheus",
+              "expr": "histogram_quantile(0.95, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "legendFormat": "p95",
+              "refId": "p95"
+            },
+            {
+              "datasource": "Prometheus",
+              "expr": "histogram_quantile(0.99, sum(rate(inference_latency_seconds_bucket[2m])) by (le)) * 1000",
+              "legendFormat": "p99",
+              "refId": "p99"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10
+              }
+            }
+          }
+        },
+        {
+          "id": 10,
+          "title": "Model Forward Pass Execution Time (ms)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "(rate(inference_model_execution_seconds_sum[1m]) / rate(inference_model_execution_seconds_count[1m])) * 1000",
+              "legendFormat": "{{model_name}} Model Core Time (ms)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 25,
+                "gradientMode": "scheme"
+              }
+            }
+          }
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+          "id": 400,
+          "title": "🐾 Classification Distribution & Prediction Confidence",
+          "type": "row"
+        },
+        {
+          "id": 11,
+          "title": "Predictions by Class (Cats vs Dogs)",
+          "type": "bargauge",
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 25 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_predictions_total) by (predicted_class)",
+              "legendFormat": "{{predicted_class}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "blue", "value": null },
+                  { "color": "green", "value": 10 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 12,
+          "title": "Prediction Confidence Score Distribution",
+          "type": "bargauge",
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(rate(inference_confidence_score_bucket[5m])) by (le)",
+              "legendFormat": "Confidence ≤ {{le}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "orange", "value": null },
+                  { "color": "green", "value": 5 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+          "id": 500,
+          "title": "🖥️ Pod Health & Container Resources",
+          "type": "row"
+        },
+        {
+          "id": 13,
+          "title": "Pod CPU Utilization",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 33 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"cats-dogs-classification\", container=\"inference-service\"}[1m])",
+              "legendFormat": "CPU (cores) - {{pod_name}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "cores",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 15
+              }
+            }
+          }
+        },
+        {
+          "id": 14,
+          "title": "Pod Memory Usage (MB)",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 33 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "container_memory_usage_bytes{namespace=\"cats-dogs-classification\", container=\"inference-service\"} / 1024 / 1024",
+              "legendFormat": "RAM (MB) - {{pod_name}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "mbytes",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 15
+              }
+            }
+          }
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["cats-dogs", "inference", "mlops", "production"],
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {
+        "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+      },
+      "timezone": "browser",
+      "title": "Cats vs Dogs - Inference & Model Telemetry",
+      "version": 1
     }

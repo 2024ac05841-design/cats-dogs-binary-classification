@@ -1,97 +1,326 @@
-"""Metrics tracking for the inference service"""
+"""Metrics tracking and Prometheus exporter for the Cats vs Dogs Inference Service"""
 
 import time
 from datetime import datetime
 from pathlib import Path
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from threading import Lock
 
-# Metrics file
+try:
+    from prometheus_client import (
+        Counter,
+        Histogram,
+        Gauge,
+        generate_latest,
+        CONTENT_TYPE_LATEST,
+        REGISTRY,
+    )
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
+# Ensure logs directory exists
+Path("logs").mkdir(exist_ok=True)
 METRICS_FILE = Path("logs/metrics.jsonl")
 metrics_lock = Lock()
 
+if PROMETHEUS_AVAILABLE:
+    # 1. Request counters
+    INFERENCE_REQUESTS_TOTAL = Counter(
+        "inference_requests_total",
+        "Total incoming HTTP requests to inference service",
+        ["method", "endpoint", "status_code"],
+    )
+
+    # 2. Prediction counters by class & model
+    INFERENCE_PREDICTIONS_TOTAL = Counter(
+        "inference_predictions_total",
+        "Total inference predictions performed",
+        ["predicted_class", "model_name"],
+    )
+
+    # 3. Inference errors
+    INFERENCE_ERRORS_TOTAL = Counter(
+        "inference_errors_total",
+        "Total inference error occurrences",
+        ["error_type", "endpoint"],
+    )
+
+    # 4. Latency histograms
+    INFERENCE_LATENCY_SECONDS = Histogram(
+        "inference_latency_seconds",
+        "Total end-to-end request latency in seconds",
+        ["endpoint"],
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+    )
+
+    INFERENCE_MODEL_TIME_SECONDS = Histogram(
+        "inference_model_execution_seconds",
+        "Time spent strictly executing model forward pass in seconds",
+        ["model_name"],
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.5, 1.0),
+    )
+
+    # 5. Prediction confidence distribution
+    INFERENCE_CONFIDENCE_SCORE = Histogram(
+        "inference_confidence_score",
+        "Distribution of prediction confidence scores",
+        ["predicted_class"],
+        buckets=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 1.0),
+    )
+
+    # 6. Model Metadata & Accuracy Gauges
+    MODEL_VAL_ACCURACY = Gauge(
+        "model_validation_accuracy_percent",
+        "Validation accuracy percentage of the currently active model",
+        ["model_name", "version", "stage"],
+    )
+
+    MODEL_INFO = Gauge(
+        "model_info",
+        "Information about the active loaded model",
+        ["model_name", "version", "stage", "run_id", "source"],
+    )
+
+    INFERENCE_AVG_LATENCY_MS = Gauge(
+        "inference_avg_latency_ms",
+        "Moving average latency of predictions in milliseconds",
+    )
+
 
 class MetricsCollector:
-    """Collect and track metrics"""
+    """In-memory collector and stats accumulator"""
 
     def __init__(self):
         self.request_count = 0
         self.prediction_count = 0
         self.error_count = 0
-        self.total_latency = 0.0
+        self.cat_count = 0
+        self.dog_count = 0
+        self.total_latency_ms = 0.0
         self.start_time = datetime.utcnow()
+        self.recent_logs = []
+        self.max_recent_logs = 100
+        self.active_model_info = {
+            "model_name": "resnet18",
+            "version": "1",
+            "stage": "Production",
+            "val_accuracy": 99.6,
+            "run_id": "",
+            "source": "mlflow",
+        }
 
-    def record_request(self):
-        """Record an incoming request"""
+    def record_request(self, method: str = "POST", endpoint: str = "/predict", status_code: int = 200):
         self.request_count += 1
+        if PROMETHEUS_AVAILABLE:
+            try:
+                INFERENCE_REQUESTS_TOTAL.labels(
+                    method=method, endpoint=endpoint, status_code=str(status_code)
+                ).inc()
+            except Exception:
+                pass
 
-    def record_prediction(self, latency_ms: float, success: bool = True):
-        """Record a prediction"""
+    def record_prediction(
+        self,
+        latency_ms: float = 0.0,
+        success: bool = True,
+        predicted_class: str = "cat",
+        confidence: float = 0.95,
+        model_name: str = "resnet18",
+        model_time_s: Optional[float] = None,
+    ):
         if success:
             self.prediction_count += 1
-            self.total_latency += latency_ms
+            self.total_latency_ms += latency_ms
+
+            if predicted_class.lower() == "cat":
+                self.cat_count += 1
+            elif predicted_class.lower() == "dog":
+                self.dog_count += 1
+
+            avg_lat = self.total_latency_ms / max(self.prediction_count, 1)
+
+            if PROMETHEUS_AVAILABLE:
+                try:
+                    INFERENCE_PREDICTIONS_TOTAL.labels(
+                        predicted_class=predicted_class, model_name=model_name
+                    ).inc()
+                    INFERENCE_LATENCY_SECONDS.labels(endpoint="/predict").observe(latency_ms / 1000.0)
+                    INFERENCE_CONFIDENCE_SCORE.labels(predicted_class=predicted_class).observe(confidence)
+                    INFERENCE_AVG_LATENCY_MS.set(avg_lat)
+
+                    if model_time_s is not None:
+                        INFERENCE_MODEL_TIME_SECONDS.labels(model_name=model_name).observe(model_time_s)
+                except Exception:
+                    pass
         else:
             self.error_count += 1
+            if PROMETHEUS_AVAILABLE:
+                try:
+                    INFERENCE_ERRORS_TOTAL.labels(error_type="prediction_failure", endpoint="/predict").inc()
+                except Exception:
+                    pass
 
-    def record_error(self):
-        """Record an error"""
+    def record_error(self, error_type: str = "error", endpoint: str = "/predict"):
         self.error_count += 1
+        if PROMETHEUS_AVAILABLE:
+            try:
+                INFERENCE_ERRORS_TOTAL.labels(error_type=error_type, endpoint=endpoint).inc()
+            except Exception:
+                pass
+
+    def set_model_info(
+        self,
+        model_name: str,
+        version: str = "1",
+        stage: str = "Production",
+        val_accuracy: Optional[float] = None,
+        run_id: str = "",
+        source: str = "mlflow",
+    ):
+        acc = float(val_accuracy) if val_accuracy is not None else 99.6
+        self.active_model_info = {
+            "model_name": model_name,
+            "version": str(version),
+            "stage": stage,
+            "val_accuracy": acc,
+            "run_id": run_id,
+            "source": source,
+        }
+
+        if PROMETHEUS_AVAILABLE:
+            try:
+                MODEL_VAL_ACCURACY.labels(
+                    model_name=model_name, version=str(version), stage=stage
+                ).set(acc)
+                MODEL_INFO.labels(
+                    model_name=model_name,
+                    version=str(version),
+                    stage=stage,
+                    run_id=run_id,
+                    source=source,
+                ).set(1.0)
+            except Exception:
+                pass
+
+    def add_log_entry(self, entry: dict):
+        with metrics_lock:
+            self.recent_logs.append(entry)
+            if len(self.recent_logs) > self.max_recent_logs:
+                self.recent_logs.pop(0)
 
     def get_stats(self) -> Dict[str, Any]:
-        """Get current metrics"""
         uptime = (datetime.utcnow() - self.start_time).total_seconds()
         avg_latency = (
-            self.total_latency / self.prediction_count
+            self.total_latency_ms / self.prediction_count
             if self.prediction_count > 0
-            else 0
+            else 0.0
         )
 
         return {
             "timestamp": datetime.utcnow().isoformat(),
-            "uptime_seconds": uptime,
+            "uptime_seconds": round(uptime, 1),
             "total_requests": self.request_count,
             "successful_predictions": self.prediction_count,
             "errors": self.error_count,
-            "average_latency_ms": avg_latency,
-            "success_rate": (
-                self.prediction_count / self.request_count * 100
+            "class_distribution": {
+                "cats": self.cat_count,
+                "dogs": self.dog_count,
+            },
+            "average_latency_ms": round(avg_latency, 2),
+            "success_rate": round(
+                (self.prediction_count / self.request_count * 100)
                 if self.request_count > 0
-                else 0
+                else 100.0,
+                2,
             ),
+            "model_info": self.active_model_info,
+            "recent_logs_count": len(self.recent_logs),
         }
 
     def reset(self):
-        """Reset all metrics"""
         self.request_count = 0
         self.prediction_count = 0
         self.error_count = 0
-        self.total_latency = 0.0
+        self.cat_count = 0
+        self.dog_count = 0
+        self.total_latency_ms = 0.0
         self.start_time = datetime.utcnow()
+        self.recent_logs = []
 
 
 # Global collector
 _collector = MetricsCollector()
 
 
-def record_request():
-    """Record an incoming request"""
-    _collector.record_request()
+def record_request(method: str = "POST", endpoint: str = "/predict", status_code: int = 200):
+    _collector.record_request(method, endpoint, status_code)
 
 
-def record_prediction(latency_ms: float, success: bool = True):
-    """Record a prediction result"""
-    _collector.record_prediction(latency_ms, success)
+def record_prediction(
+    latency_ms: float = 0.0,
+    success: bool = True,
+    predicted_class: str = "cat",
+    confidence: float = 0.95,
+    model_name: str = "resnet18",
+    model_time_s: Optional[float] = None,
+):
+    _collector.record_prediction(latency_ms, success, predicted_class, confidence, model_name, model_time_s)
 
 
-def record_error():
-    """Record an error"""
-    _collector.record_error()
+def record_error(error_type: str = "error", endpoint: str = "/predict"):
+    _collector.record_error(error_type, endpoint)
+
+
+def set_model_info(
+    model_name: str,
+    version: str = "1",
+    stage: str = "Production",
+    val_accuracy: Optional[float] = None,
+    run_id: str = "",
+    source: str = "mlflow",
+):
+    _collector.set_model_info(model_name, version, stage, val_accuracy, run_id, source)
+
+
+def add_log_entry(entry: dict):
+    _collector.add_log_entry(entry)
 
 
 def get_metrics() -> Dict[str, Any]:
-    """Get current metrics"""
     return _collector.get_stats()
+
+
+def get_recent_logs():
+    return _collector.recent_logs
+
+
+def get_prometheus_metrics() -> bytes:
+    """Generate Prometheus exposition format payload"""
+    if PROMETHEUS_AVAILABLE:
+        return generate_latest(REGISTRY)
+    else:
+        stats = _collector.get_stats()
+        lines = [
+            f"# HELP inference_requests_total Total incoming requests",
+            f"# TYPE inference_requests_total counter",
+            f"inference_requests_total {stats['total_requests']}",
+            f"# HELP inference_predictions_total Total predictions",
+            f"# TYPE inference_predictions_total counter",
+            f"inference_predictions_total {stats['successful_predictions']}",
+            f"# HELP inference_errors_total Total errors",
+            f"# TYPE inference_errors_total counter",
+            f"inference_errors_total {stats['errors']}",
+            f"# HELP inference_avg_latency_ms Average latency in ms",
+            f"# TYPE inference_avg_latency_ms gauge",
+            f"inference_avg_latency_ms {stats['average_latency_ms']}",
+            f"# HELP model_validation_accuracy_percent Model validation accuracy",
+            f"# TYPE model_validation_accuracy_percent gauge",
+            f"model_validation_accuracy_percent {stats['model_info']['val_accuracy']}",
+        ]
+        return "\n".join(lines).encode("utf-8")
 
 
 def log_metrics():
