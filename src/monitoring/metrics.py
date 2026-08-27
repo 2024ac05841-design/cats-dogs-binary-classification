@@ -120,6 +120,22 @@ if PROMETHEUS_AVAILABLE:
         "99th percentile (p99) prediction latency in milliseconds",
     )
 
+    INFERENCE_CONFIDENCE_TIERS_TOTAL = Counter(
+        "inference_confidence_tiers_total",
+        "Predictions grouped into confidence tiers",
+        ["tier"],
+    )
+
+    INFERENCE_AVG_CONFIDENCE_PERCENT = Gauge(
+        "inference_avg_confidence_percent",
+        "Average prediction confidence percentage",
+    )
+
+    INFERENCE_LATEST_CONFIDENCE_PERCENT = Gauge(
+        "inference_latest_confidence_percent",
+        "Latest prediction confidence percentage",
+    )
+
 
 class MetricsCollector:
     """In-memory collector and stats accumulator"""
@@ -131,6 +147,7 @@ class MetricsCollector:
         self.cat_count = 0
         self.dog_count = 0
         self.total_latency_ms = 0.0
+        self.total_confidence = 0.0
         self.latency_history = []
         self.start_time = datetime.utcnow()
         self.recent_logs = []
@@ -166,6 +183,7 @@ class MetricsCollector:
         if success:
             self.prediction_count += 1
             self.total_latency_ms += latency_ms
+            self.total_confidence += confidence
             self.latency_history.append(latency_ms)
             if len(self.latency_history) > 1000:
                 self.latency_history.pop(0)
@@ -176,6 +194,15 @@ class MetricsCollector:
                 self.dog_count += 1
 
             avg_lat = self.total_latency_ms / max(self.prediction_count, 1)
+            avg_conf_pct = (self.total_confidence / max(self.prediction_count, 1)) * 100.0
+            latest_conf_pct = confidence * 100.0
+
+            if confidence >= 0.90:
+                tier = "90% - 100% (High Confidence)"
+            elif confidence >= 0.70:
+                tier = "70% - 90% (Medium Confidence)"
+            else:
+                tier = "< 70% (Low Confidence)"
 
             # Calculate percentiles
             sorted_latencies = sorted(self.latency_history)
@@ -201,6 +228,9 @@ class MetricsCollector:
                     INFERENCE_P95_LATENCY_MS.set(p95)
                     INFERENCE_P99_LATENCY_MS.set(p99)
                     INFERENCE_MODEL_EXECUTION_MS.labels(model_name=model_name).set(model_time_ms)
+                    INFERENCE_CONFIDENCE_TIERS_TOTAL.labels(tier=tier).inc()
+                    INFERENCE_AVG_CONFIDENCE_PERCENT.set(avg_conf_pct)
+                    INFERENCE_LATEST_CONFIDENCE_PERCENT.set(latest_conf_pct)
 
                     if model_time_s is not None:
                         INFERENCE_MODEL_TIME_SECONDS.labels(model_name=model_name).observe(model_time_s)
