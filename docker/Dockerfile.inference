@@ -17,12 +17,13 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     find /usr/local/lib/python*/site-packages -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     find /usr/local/lib/python*/site-packages -name "*.pyc" -delete 2>/dev/null || true
 
-# Copy application source code and baseline fallback models
+# Copy application source code
 COPY src ./src
-COPY models ./models
 
 # Create necessary directories for models cache and logs
-RUN mkdir -p logs data /app-models
+# Note: models directory may not exist in git (it's in .gitignore)
+# Models will be fetched at runtime from MLflow
+RUN mkdir -p logs data /app-models models
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

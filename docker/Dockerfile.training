@@ -20,10 +20,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Copy application code
 COPY src ./src
-COPY models ./models
 
 # Create necessary directories
-RUN mkdir -p logs data
+# Note: models directory may not exist in git (it's in .gitignore)
+# Training will create models during training
+RUN mkdir -p logs data models
 
 # Set environment variables for MLFlow and training
 ENV PYTHONUNBUFFERED=1
