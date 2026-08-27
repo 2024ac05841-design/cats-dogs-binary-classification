@@ -217,11 +217,13 @@ async def predict_image(file: UploadFile = File(...), request: Request = None):
     """
     client_ip = request.client.host if request and request.client else "unknown"
     req_id = log_request(method="POST", path="/predict", client_ip=client_ip)
+    logger.info(f"➡️ [REQ-{req_id}] Incoming POST /predict from {client_ip} | File: {file.filename}")
 
     if model is None:
         record_error(error_type="model_not_loaded", endpoint="/predict")
         record_request(method="POST", endpoint="/predict", status_code=503)
         log_error("Model not loaded", error_type="ModelUnavailable", request_id=req_id)
+        logger.error(f"❌ [REQ-{req_id}] 503 Service Unavailable: Model not loaded")
         raise HTTPException(status_code=503, detail="Model not loaded")
 
     start_time = time.perf_counter()
@@ -268,6 +270,11 @@ async def predict_image(file: UploadFile = File(...), request: Request = None):
             probabilities=probs,
         )
 
+        logger.info(
+            f"⬅️ [REQ-{req_id}] 200 OK | Pred: {class_name.upper()} ({confidence:.2%}) "
+            f"| Latency: {latency_ms:.1f}ms (Model: {model_time*1000:.1f}ms) | Probs: {probs}"
+        )
+
         return {
             "class_name": class_name,
             "confidence": float(confidence),
@@ -279,7 +286,7 @@ async def predict_image(file: UploadFile = File(...), request: Request = None):
         record_request(method="POST", endpoint="/predict", status_code=400)
         record_error(error_type=type(e).__name__, endpoint="/predict")
         log_error(str(e), error_type=type(e).__name__, request_id=req_id)
-        logger.error(f"Prediction error: {e}", exc_info=True)
+        logger.error(f"❌ [REQ-{req_id}] 400 Bad Request: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
 
 

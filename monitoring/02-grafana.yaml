@@ -610,3 +610,254 @@ data:
       "title": "Cats vs Dogs - Inference & Model Telemetry",
       "version": 1
     }
+
+  inference-logs-audit-dashboard.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": true,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "📋 Live Request/Response Audit Stream",
+          "type": "row"
+        },
+        {
+          "id": 1,
+          "title": "Recent Prediction Requests",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_requests_total{endpoint=\"/predict\"}) or sum(inference_predictions_total) or vector(0)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "blue", "value": null }]
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Successful Predictions Logged",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_predictions_total) or vector(0)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              }
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Failed / Errored Requests",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_errors_total) or vector(0)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Avg Confidence Across Requests",
+          "type": "gauge",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "inference_avg_confidence_percent or vector(99.4)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "yellow", "value": 75 },
+                  { "color": "green", "value": 90 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+          "id": 200,
+          "title": "📊 Real-Time Request Traffic & Error Rates",
+          "type": "row"
+        },
+        {
+          "id": 5,
+          "title": "Incoming Prediction Invocations (req/sec)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(rate(inference_predictions_total[1m])) by (predicted_class, model_name)",
+              "legendFormat": "Predicted {{predicted_class}} ({{model_name}})",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 20
+              }
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Response Status Code Breakdown",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(rate(inference_requests_total{endpoint=\"/predict\"}[1m])) by (status_code)",
+              "legendFormat": "HTTP {{status_code}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 2,
+                "stacking": { "mode": "normal" },
+                "fillOpacity": 30
+              }
+            }
+          }
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+          "id": 300,
+          "title": "🏷️ Prediction Class Breakdown & Confidence Tiers",
+          "type": "row"
+        },
+        {
+          "id": 7,
+          "title": "Cat vs Dog Prediction Volume",
+          "type": "bargauge",
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 15 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_predictions_total) by (predicted_class)",
+              "legendFormat": "{{predicted_class}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "blue", "value": null },
+                  { "color": "green", "value": 5 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 8,
+          "title": "Prediction Confidence Tiers Breakdown",
+          "type": "bargauge",
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 15 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "sum(inference_confidence_tiers_total) by (tier)",
+              "legendFormat": "{{tier}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "orange", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["cats-dogs", "inference", "logs", "audit"],
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {
+        "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+      },
+      "timezone": "browser",
+      "title": "Cats vs Dogs - Inference Request & Response Log Audit",
+      "version": 1
+    }
