@@ -275,6 +275,7 @@ This API is backed by **PyTorch**, managed via **MLFlow Model Registry**, and mo
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    swagger_ui_parameters={"persistAuthorization": True, "displayRequestDuration": True},
     lifespan=lifespan,
 )
 
@@ -285,6 +286,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
