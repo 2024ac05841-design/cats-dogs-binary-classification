@@ -36,10 +36,13 @@ logging.basicConfig(
 logger = logging.getLogger("gpu_training")
 
 
-def setup_mlflow(tracking_uri: Optional[str] = None, experiment_name: str = "cats-dogs-gpu") -> bool:
+def setup_mlflow(
+    tracking_uri: Optional[str] = None, experiment_name: str = "cats-dogs-gpu"
+) -> bool:
     """Initialize MLFlow logging if available"""
     try:
         import mlflow
+
         uri = tracking_uri or os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
         mlflow.set_tracking_uri(uri)
         try:
@@ -50,7 +53,9 @@ def setup_mlflow(tracking_uri: Optional[str] = None, experiment_name: str = "cat
         logger.info(f"MLFlow connected at {uri} (experiment: '{experiment_name}')")
         return True
     except Exception as e:
-        logger.warning(f"MLFlow logging not active ({e}). Training will proceed locally.")
+        logger.warning(
+            f"MLFlow logging not active ({e}). Training will proceed locally."
+        )
         return False
 
 
@@ -59,6 +64,7 @@ def build_model(model_name: str, num_classes: int = 2) -> nn.Module:
     name = model_name.lower().strip()
 
     if name in ["simple_cnn", "cnn"]:
+
         class SimpleCNN(nn.Module):
             def __init__(self, num_classes: int = 2):
                 super().__init__()
@@ -96,6 +102,7 @@ def build_model(model_name: str, num_classes: int = 2) -> nn.Module:
     elif name == "resnet18":
         try:
             from torchvision.models import resnet18, ResNet18_Weights
+
             model = resnet18(weights=ResNet18_Weights.DEFAULT)
         except Exception:
             model = models.resnet18(pretrained=True)
@@ -105,6 +112,7 @@ def build_model(model_name: str, num_classes: int = 2) -> nn.Module:
     elif name == "resnet50":
         try:
             from torchvision.models import resnet50, ResNet50_Weights
+
             model = resnet50(weights=ResNet50_Weights.DEFAULT)
         except Exception:
             model = models.resnet50(pretrained=True)
@@ -114,6 +122,7 @@ def build_model(model_name: str, num_classes: int = 2) -> nn.Module:
     elif name == "mobilenet_v2":
         try:
             from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
+
             model = mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
         except Exception:
             model = models.mobilenet_v2(pretrained=True)
@@ -121,6 +130,7 @@ def build_model(model_name: str, num_classes: int = 2) -> nn.Module:
         return model
 
     elif name == "logistic_regression":
+
         class LogisticRegressionModel(nn.Module):
             def __init__(self, num_classes: int = 2, input_size: int = 150528):
                 super().__init__()
@@ -133,7 +143,9 @@ def build_model(model_name: str, num_classes: int = 2) -> nn.Module:
         return LogisticRegressionModel(num_classes=num_classes)
 
     else:
-        raise ValueError(f"Unknown model name '{model_name}'. Choose from: simple_cnn, resnet18, resnet50, mobilenet_v2, logistic_regression")
+        raise ValueError(
+            f"Unknown model name '{model_name}'. Choose from: simple_cnn, resnet18, resnet50, mobilenet_v2, logistic_regression"
+        )
 
 
 def train_one_epoch(
@@ -150,7 +162,7 @@ def train_one_epoch(
     correct = 0
     total = 0
 
-    use_amp = (device.type == "cuda" and scaler is not None)
+    use_amp = device.type == "cuda" and scaler is not None
 
     for images, labels in loader:
         images = images.to(device, non_blocking=True)
@@ -227,7 +239,9 @@ def train_single_model(
     use_mlflow: bool = False,
 ) -> Dict:
     """Train, validate, and test a single model architecture"""
-    logger.info(f"\n{'='*70}\nStarting Training: {model_name.upper()} on {device}\n{'='*70}")
+    logger.info(
+        f"\n{'='*70}\nStarting Training: {model_name.upper()} on {device}\n{'='*70}"
+    )
 
     model = build_model(model_name).to(device)
     criterion = nn.CrossEntropyLoss()
@@ -259,7 +273,10 @@ def train_single_model(
     if use_mlflow:
         try:
             import mlflow
-            mlflow_run = mlflow.start_run(run_name=f"gpu-{model_name}-{int(time.time())}")
+
+            mlflow_run = mlflow.start_run(
+                run_name=f"gpu-{model_name}-{int(time.time())}"
+            )
             mlflow.log_param("model_name", model_name)
             mlflow.log_param("device", str(device))
             mlflow.log_param("epochs", epochs)
@@ -270,7 +287,9 @@ def train_single_model(
 
     for epoch in range(1, epochs + 1):
         ep_start = time.time()
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, scaler, device)
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, criterion, optimizer, scaler, device
+        )
         val_loss, val_acc = evaluate(model, val_loader, criterion, device)
         ep_time = time.time() - ep_start
 
@@ -286,7 +305,9 @@ def train_single_model(
             best_val_acc = val_acc
             best_val_loss = val_loss
             best_epoch = epoch
-            best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            best_state_dict = {
+                k: v.cpu().clone() for k, v in model.state_dict().items()
+            }
 
         logger.info(
             f"Epoch [{epoch:02d}/{epochs:02d}] ({ep_time:.1f}s) | "
@@ -298,6 +319,7 @@ def train_single_model(
         if use_mlflow and mlflow_run:
             try:
                 import mlflow
+
                 mlflow.log_metric("train_loss", train_loss, step=epoch)
                 mlflow.log_metric("train_acc", train_acc, step=epoch)
                 mlflow.log_metric("val_loss", val_loss, step=epoch)
@@ -314,11 +336,14 @@ def train_single_model(
     test_loss, test_acc = (0.0, 0.0)
     if test_loader is not None:
         test_loss, test_acc = evaluate(model, test_loader, criterion, device)
-        logger.info(f"Test Set Performance for {model_name}: Acc = {test_acc:.2f}%, Loss = {test_loss:.4f}")
+        logger.info(
+            f"Test Set Performance for {model_name}: Acc = {test_acc:.2f}%, Loss = {test_loss:.4f}"
+        )
 
     if use_mlflow and mlflow_run:
         try:
             import mlflow
+
             mlflow.log_metric("best_val_acc", best_val_acc)
             mlflow.log_metric("best_val_loss", best_val_loss)
             mlflow.log_metric("test_acc", test_acc)
@@ -366,11 +391,13 @@ def run_gpu_training(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         gpu_name = torch.cuda.get_device_name(0)
-        vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+        vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
         logger.info(f"🚀 Using GPU: {gpu_name} ({vram_gb:.1f} GB VRAM)")
         torch.backends.cudnn.benchmark = True
     else:
-        logger.warning("⚠️ CUDA is not available in current PyTorch build. Training will run on CPU.")
+        logger.warning(
+            "⚠️ CUDA is not available in current PyTorch build. Training will run on CPU."
+        )
 
     use_mlflow = setup_mlflow(mlflow_uri)
 
@@ -435,7 +462,9 @@ def run_gpu_training(
     if best_overall["model_name"] and best_overall_state is not None:
         best_primary_path = target_models_dir / "best_model.pkl"
         torch.save(best_overall_state, best_primary_path)
-        logger.info(f"\n{'='*70}\n🏆 OVERALL BEST MODEL: {best_overall['model_name'].upper()}")
+        logger.info(
+            f"\n{'='*70}\n🏆 OVERALL BEST MODEL: {best_overall['model_name'].upper()}"
+        )
         logger.info(f"   Validation Accuracy : {best_overall['val_acc']:.2f}%")
         logger.info(f"   Test Accuracy       : {best_overall['test_acc']:.2f}%")
         logger.info(f"   Saved to            : {best_primary_path}\n{'='*70}")
@@ -461,15 +490,42 @@ def run_gpu_training(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Multi-Model GPU Training for Cats vs Dogs")
-    parser.add_argument("--data-dir", type=str, default="data/processed", help="Path to processed dataset")
-    parser.add_argument("--output-dir", type=str, default="src/models", help="Destination folder for best models")
-    parser.add_argument("--models", nargs="+", default=["resnet18", "simple_cnn", "mobilenet_v2"], help="Model architectures to train")
-    parser.add_argument("--epochs", type=int, default=12, help="Number of training epochs per model")
-    parser.add_argument("--batch-size", type=int, default=64, help="Batch size for training")
+    parser = argparse.ArgumentParser(
+        description="Multi-Model GPU Training for Cats vs Dogs"
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="data/processed",
+        help="Path to processed dataset",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="src/models",
+        help="Destination folder for best models",
+    )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        default=["resnet18", "simple_cnn", "mobilenet_v2"],
+        help="Model architectures to train",
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=12, help="Number of training epochs per model"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=64, help="Batch size for training"
+    )
     parser.add_argument("--lr", type=float, default=1e-4, help="Base learning rate")
-    parser.add_argument("--preload", action="store_true", help="Preload all images to memory for maximum throughput")
-    parser.add_argument("--mlflow-uri", type=str, default=None, help="MLFlow tracking URI")
+    parser.add_argument(
+        "--preload",
+        action="store_true",
+        help="Preload all images to memory for maximum throughput",
+    )
+    parser.add_argument(
+        "--mlflow-uri", type=str, default=None, help="MLFlow tracking URI"
+    )
 
     args = parser.parse_args()
 

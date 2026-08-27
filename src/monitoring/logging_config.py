@@ -25,7 +25,18 @@ class JSONFormatter(logging.Formatter):
         if record.exc_info:
             log_obj["exception"] = self.formatException(record.exc_info)
 
-        for attr in ["user", "request_id", "latency_ms", "client_ip", "method", "path", "status_code", "class_name", "confidence", "model"]:
+        for attr in [
+            "user",
+            "request_id",
+            "latency_ms",
+            "client_ip",
+            "method",
+            "path",
+            "status_code",
+            "class_name",
+            "confidence",
+            "model",
+        ]:
             if hasattr(record, attr):
                 log_obj[attr] = getattr(record, attr)
 
@@ -77,8 +88,15 @@ request_logger = setup_logging("inference.requests", "INFO")
 def log_request(method: str, path: str, client_ip: str = None, request_id: str = None):
     """Log incoming request"""
     req_id = request_id or str(int(time.time() * 1000))
-    extra = {"request_id": req_id, "method": method, "path": path, "client_ip": client_ip}
-    request_logger.info(f"Incoming {method} request to {path} from {client_ip}", extra=extra)
+    extra = {
+        "request_id": req_id,
+        "method": method,
+        "path": path,
+        "client_ip": client_ip,
+    }
+    request_logger.info(
+        f"Incoming {method} request to {path} from {client_ip}", extra=extra
+    )
     return req_id
 
 
@@ -115,6 +133,7 @@ def log_prediction(
     )
     try:
         from .metrics import add_log_entry
+
         add_log_entry(entry)
     except Exception:
         pass
@@ -135,7 +154,7 @@ def log_error(error_msg: str, error_type: str = None, request_id: str = None):
     )
     try:
         from .metrics import add_log_entry
+
         add_log_entry(entry)
     except Exception:
         pass
-

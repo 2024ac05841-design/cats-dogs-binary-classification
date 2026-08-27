@@ -16,6 +16,7 @@ try:
         CONTENT_TYPE_LATEST,
         REGISTRY,
     )
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -139,7 +140,16 @@ if PROMETHEUS_AVAILABLE:
     INFERENCE_LOG_ENTRY = Gauge(
         "inference_log_entry",
         "Recent structured inference log events with detailed metadata",
-        ["request_id", "timestamp", "client_ip", "class_name", "confidence_pct", "latency_ms", "model_name", "status"],
+        [
+            "request_id",
+            "timestamp",
+            "client_ip",
+            "class_name",
+            "confidence_pct",
+            "latency_ms",
+            "model_name",
+            "status",
+        ],
     )
 
 
@@ -167,7 +177,9 @@ class MetricsCollector:
             "source": "mlflow",
         }
 
-    def record_request(self, method: str = "POST", endpoint: str = "/predict", status_code: int = 200):
+    def record_request(
+        self, method: str = "POST", endpoint: str = "/predict", status_code: int = 200
+    ):
         self.request_count += 1
         if PROMETHEUS_AVAILABLE:
             try:
@@ -200,7 +212,9 @@ class MetricsCollector:
                 self.dog_count += 1
 
             avg_lat = self.total_latency_ms / max(self.prediction_count, 1)
-            avg_conf_pct = (self.total_confidence / max(self.prediction_count, 1)) * 100.0
+            avg_conf_pct = (
+                self.total_confidence / max(self.prediction_count, 1)
+            ) * 100.0
             latest_conf_pct = confidence * 100.0
 
             if confidence >= 0.90:
@@ -218,35 +232,47 @@ class MetricsCollector:
             p95 = sorted_latencies[min(int(n * 0.95), n - 1)] if n > 0 else latency_ms
             p99 = sorted_latencies[min(int(n * 0.99), n - 1)] if n > 0 else latency_ms
 
-            model_time_ms = (model_time_s * 1000.0) if model_time_s is not None else latency_ms
+            model_time_ms = (
+                (model_time_s * 1000.0) if model_time_s is not None else latency_ms
+            )
 
             if PROMETHEUS_AVAILABLE:
                 try:
                     INFERENCE_PREDICTIONS_TOTAL.labels(
                         predicted_class=predicted_class, model_name=model_name
                     ).inc()
-                    INFERENCE_LATENCY_SECONDS.labels(endpoint="/predict").observe(latency_ms / 1000.0)
-                    INFERENCE_CONFIDENCE_SCORE.labels(predicted_class=predicted_class).observe(confidence)
+                    INFERENCE_LATENCY_SECONDS.labels(endpoint="/predict").observe(
+                        latency_ms / 1000.0
+                    )
+                    INFERENCE_CONFIDENCE_SCORE.labels(
+                        predicted_class=predicted_class
+                    ).observe(confidence)
                     INFERENCE_AVG_LATENCY_MS.set(avg_lat)
                     INFERENCE_LATEST_LATENCY_MS.set(latency_ms)
                     INFERENCE_P50_LATENCY_MS.set(p50)
                     INFERENCE_P90_LATENCY_MS.set(p90)
                     INFERENCE_P95_LATENCY_MS.set(p95)
                     INFERENCE_P99_LATENCY_MS.set(p99)
-                    INFERENCE_MODEL_EXECUTION_MS.labels(model_name=model_name).set(model_time_ms)
+                    INFERENCE_MODEL_EXECUTION_MS.labels(model_name=model_name).set(
+                        model_time_ms
+                    )
                     INFERENCE_CONFIDENCE_TIERS_TOTAL.labels(tier=tier).inc()
                     INFERENCE_AVG_CONFIDENCE_PERCENT.set(avg_conf_pct)
                     INFERENCE_LATEST_CONFIDENCE_PERCENT.set(latest_conf_pct)
 
                     if model_time_s is not None:
-                        INFERENCE_MODEL_TIME_SECONDS.labels(model_name=model_name).observe(model_time_s)
+                        INFERENCE_MODEL_TIME_SECONDS.labels(
+                            model_name=model_name
+                        ).observe(model_time_s)
                 except Exception:
                     pass
         else:
             self.error_count += 1
             if PROMETHEUS_AVAILABLE:
                 try:
-                    INFERENCE_ERRORS_TOTAL.labels(error_type="prediction_failure", endpoint="/predict").inc()
+                    INFERENCE_ERRORS_TOTAL.labels(
+                        error_type="prediction_failure", endpoint="/predict"
+                    ).inc()
                 except Exception:
                     pass
 
@@ -254,7 +280,9 @@ class MetricsCollector:
         self.error_count += 1
         if PROMETHEUS_AVAILABLE:
             try:
-                INFERENCE_ERRORS_TOTAL.labels(error_type=error_type, endpoint=endpoint).inc()
+                INFERENCE_ERRORS_TOTAL.labels(
+                    error_type=error_type, endpoint=endpoint
+                ).inc()
             except Exception:
                 pass
 
@@ -308,9 +336,19 @@ class MetricsCollector:
                 else:
                     ts_short = ts[:8]
                 client_ip = str(entry.get("client_ip", "127.0.0.1"))
-                class_name = str(entry.get("class_name", entry.get("error_type", "UNKNOWN"))).upper()
-                conf_pct = f"{round(entry.get('confidence', 0.0) * 100, 2)}%" if "confidence" in entry else "N/A"
-                latency_str = f"{round(entry.get('latency_ms', 0.0), 1)} ms" if "latency_ms" in entry else "N/A"
+                class_name = str(
+                    entry.get("class_name", entry.get("error_type", "UNKNOWN"))
+                ).upper()
+                conf_pct = (
+                    f"{round(entry.get('confidence', 0.0) * 100, 2)}%"
+                    if "confidence" in entry
+                    else "N/A"
+                )
+                latency_str = (
+                    f"{round(entry.get('latency_ms', 0.0), 1)} ms"
+                    if "latency_ms" in entry
+                    else "N/A"
+                )
                 model_name = str(entry.get("model_name", "resnet18"))
                 status = str(entry.get("status", "success")).upper()
 
@@ -347,9 +385,11 @@ class MetricsCollector:
             },
             "average_latency_ms": round(avg_latency, 2),
             "success_rate": round(
-                (self.prediction_count / self.request_count * 100)
-                if self.request_count > 0
-                else 100.0,
+                (
+                    (self.prediction_count / self.request_count * 100)
+                    if self.request_count > 0
+                    else 100.0
+                ),
                 2,
             ),
             "model_info": self.active_model_info,
@@ -371,7 +411,9 @@ class MetricsCollector:
 _collector = MetricsCollector()
 
 
-def record_request(method: str = "POST", endpoint: str = "/predict", status_code: int = 200):
+def record_request(
+    method: str = "POST", endpoint: str = "/predict", status_code: int = 200
+):
     _collector.record_request(method, endpoint, status_code)
 
 
@@ -383,7 +425,9 @@ def record_prediction(
     model_name: str = "resnet18",
     model_time_s: Optional[float] = None,
 ):
-    _collector.record_prediction(latency_ms, success, predicted_class, confidence, model_name, model_time_s)
+    _collector.record_prediction(
+        latency_ms, success, predicted_class, confidence, model_name, model_time_s
+    )
 
 
 def record_error(error_type: str = "error", endpoint: str = "/predict"):

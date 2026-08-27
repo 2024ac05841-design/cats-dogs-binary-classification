@@ -153,7 +153,10 @@ class LogisticRegressionModel(nn.Module):
 
 
 def create_model(
-    model_name: str = "simple_cnn", num_classes: int = 2, device: str = None, pretrained: bool = False
+    model_name: str = "simple_cnn",
+    num_classes: int = 2,
+    device: str = None,
+    pretrained: bool = False,
 ) -> nn.Module:
     """
     Factory function to create model

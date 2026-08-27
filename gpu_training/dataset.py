@@ -54,7 +54,9 @@ class CachedCatsDogsDataset(Dataset):
         )
 
         if self.preload and len(self.samples) > 0:
-            logger.info(f"Preloading {len(self.samples)} images into memory for high-speed GPU throughput...")
+            logger.info(
+                f"Preloading {len(self.samples)} images into memory for high-speed GPU throughput..."
+            )
             for idx, (path, _) in enumerate(self.samples):
                 try:
                     img = Image.open(path).convert("RGB")
@@ -84,7 +86,9 @@ class CachedCatsDogsDataset(Dataset):
             return torch.zeros(3, 224, 224), label
 
 
-def get_gpu_transforms() -> Tuple[transforms.Compose, transforms.Compose, transforms.Compose]:
+def get_gpu_transforms() -> (
+    Tuple[transforms.Compose, transforms.Compose, transforms.Compose]
+):
     """
     Get optimized augmentations for GPU training, validation, and testing
     """
@@ -126,7 +130,9 @@ def build_dataloaders(
     val_path = os.path.join(data_dir, "val")
     test_path = os.path.join(data_dir, "test")
 
-    train_dataset = CachedCatsDogsDataset(train_path, transform=train_tf, preload=preload)
+    train_dataset = CachedCatsDogsDataset(
+        train_path, transform=train_tf, preload=preload
+    )
     val_dataset = CachedCatsDogsDataset(val_path, transform=val_tf, preload=preload)
 
     has_cuda = torch.cuda.is_available()
@@ -150,7 +156,9 @@ def build_dataloaders(
 
     test_loader = None
     if os.path.exists(test_path):
-        test_dataset = CachedCatsDogsDataset(test_path, transform=test_tf, preload=preload)
+        test_dataset = CachedCatsDogsDataset(
+            test_path, transform=test_tf, preload=preload
+        )
         test_loader = DataLoader(
             test_dataset,
             batch_size=batch_size,

@@ -9,8 +9,9 @@ from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Response
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 import torch
 import torch.nn as nn
@@ -181,13 +182,17 @@ def load_model_on_startup():
         except RuntimeError:
             # Check if keys are nested (e.g. without 'model.' or with 'model.')
             new_state_dict = {}
-            has_model_prefix = any(k.startswith("model.") for k in model.state_dict().keys())
+            has_model_prefix = any(
+                k.startswith("model.") for k in model.state_dict().keys()
+            )
             state_has_prefix = any(k.startswith("model.") for k in state_dict.keys())
 
             if has_model_prefix and not state_has_prefix:
                 new_state_dict = {f"model.{k}": v for k, v in state_dict.items()}
             elif not has_model_prefix and state_has_prefix:
-                new_state_dict = {k.replace("model.", "", 1): v for k, v in state_dict.items()}
+                new_state_dict = {
+                    k.replace("model.", "", 1): v for k, v in state_dict.items()
+                }
             else:
                 new_state_dict = state_dict
 
@@ -222,7 +227,13 @@ def load_model_on_startup():
         model_info["source"] = "untrained_fallback"
         model_info["message"] = f"Failed to load weights: {str(e)}"
         model = create_model(model_name="simple_cnn", device=device, pretrained=False)
-        set_model_info(model_name="simple_cnn", version="fallback", stage="None", val_accuracy=50.0, source="untrained")
+        set_model_info(
+            model_name="simple_cnn",
+            version="fallback",
+            stage="None",
+            val_accuracy=50.0,
+            source="untrained",
+        )
 
 
 @asynccontextmanager
@@ -275,15 +286,18 @@ This API is backed by **PyTorch**, managed via **MLFlow Model Registry**, and mo
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    swagger_ui_parameters={"persistAuthorization": True, "displayRequestDuration": True},
+    swagger_ui_parameters={
+        "persistAuthorization": True,
+        "displayRequestDuration": True,
+    },
     lifespan=lifespan,
 )
 
-# Enable CORS for all origins, methods, and headers so Swagger UI try-it-out executes smoothly from any host/port
+# Enable CORS for all origins, methods, and headers (allow_credentials=False is required by browsers when origin is '*')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -309,22 +323,257 @@ async def request_telemetry_middleware(request: Request, call_next):
         status_code = response.status_code
 
         if not is_probe:
-            logger.info(f"⬅️ [REQ-{req_id}] {status_code} {method} {path} completed in {latency_ms:.1f}ms")
+            logger.info(
+                f"⬅️ [REQ-{req_id}] {status_code} {method} {path} completed in {latency_ms:.1f}ms"
+            )
 
         return response
     except Exception as e:
         latency_ms = (time.perf_counter() - start_time) * 1000.0
-        logger.error(f"❌ [REQ-{req_id}] 500 Server Error on {method} {path} ({latency_ms:.1f}ms): {e}", exc_info=True)
+        logger.error(
+            f"❌ [REQ-{req_id}] 500 Server Error on {method} {path} ({latency_ms:.1f}ms): {e}",
+            exc_info=True,
+        )
         raise e
 
 
 @app.get("/", include_in_schema=False)
 async def root():
-    """Redirect root to interactive Swagger UI documentation"""
+    """Redirect root to interactive API testing UI"""
     return RedirectResponse(url="/docs")
 
 
-@app.get("/health", response_model=HealthResponse, tags=["Service Health & Info"], summary="Health Check Endpoint")
+@app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
+async def interactive_ui():
+    """Self-contained interactive API testing console (zero CDN dependencies)"""
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐾 Cats vs Dogs Classification - API Testing Console</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
+            --text-bright: #ffffff;
+            --accent-color: #58a6ff;
+            --success-color: #2ea043;
+            --warning-color: #d29922;
+            --error-color: #f85149;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 24px;
+            line-height: 1.5;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+        h1 { color: var(--text-bright); font-size: 24px; }
+        .links a {
+            color: var(--accent-color);
+            text-decoration: none;
+            margin-left: 16px;
+            font-size: 14px;
+        }
+        .links a:hover { text-decoration: underline; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media(max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h2 { color: var(--text-bright); font-size: 18px; margin-bottom: 14px; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        button {
+            background-color: #21262d;
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            background-color: #30363d;
+            border-color: #8b949e;
+        }
+        button.primary {
+            background-color: var(--success-color);
+            color: white;
+            border-color: rgba(240, 246, 252, 0.1);
+        }
+        button.primary:hover { background-color: #2c974b; }
+        input[type="file"] {
+            display: block;
+            margin-bottom: 15px;
+            color: var(--text-color);
+        }
+        .preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            border: 1px solid var(--border-color);
+        }
+        pre {
+            background-color: #090c10;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px;
+            color: #7ee787;
+            font-size: 13px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .badge-success { background: rgba(46,160,67,0.15); color: #3fb950; border: 1px solid rgba(46,160,67,0.4); }
+        .badge-error { background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.4); }
+        .status-line { font-size: 13px; margin-bottom: 8px; color: var(--text-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>🐾 Cats vs Dogs Classification API</h1>
+                <p style="font-size: 14px; color: #8b949e;">Interactive Test Console & Live Inference Engine</p>
+            </div>
+            <div class="links">
+                <a href="/docs" target="_blank">📖 Swagger UI</a>
+                <a href="/redoc" target="_blank">📚 ReDoc</a>
+                <a href="/openapi.json" target="_blank">📜 OpenAPI JSON</a>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Left Column: GET Endpoints -->
+            <div>
+                <div class="card">
+                    <h2>🔍 Quick GET Endpoints</h2>
+                    <div class="btn-group">
+                        <button onclick="callGet('/health')">GET /health</button>
+                        <button onclick="callGet('/info')">GET /info</button>
+                        <button onclick="callGet('/stats')">GET /stats</button>
+                        <button onclick="callGet('/logs?limit=10')">GET /logs</button>
+                        <button onclick="callGet('/metrics')">GET /metrics</button>
+                    </div>
+                    <div class="status-line" id="getStatus">Select an endpoint above to execute.</div>
+                    <pre id="getResult">{\n  "message": "Click any button above to test the endpoint."\n}</pre>
+                </div>
+            </div>
+
+            <!-- Right Column: Prediction Upload -->
+            <div>
+                <div class="card">
+                    <h2>🚀 Try Image Prediction (/predict)</h2>
+                    <input type="file" id="imageInput" accept="image/jpeg, image/png" onchange="previewImage()">
+                    <img id="imagePreview" class="preview" alt="Image preview">
+                    <button class="primary" onclick="uploadAndPredict()">Execute Prediction</button>
+                    <div class="status-line" id="predStatus" style="margin-top: 15px;">Upload a cat or dog image to test.</div>
+                    <pre id="predResult">{\n  "message": "Awaiting image upload..."\n}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function callGet(path) {
+            const statusEl = document.getElementById('getStatus');
+            const resultEl = document.getElementById('getResult');
+            statusEl.innerHTML = `Fetching <code>${path}</code>...`;
+            const t0 = performance.now();
+            try {
+                const res = await fetch(path);
+                const dt = (performance.now() - t0).toFixed(1);
+                const isJson = res.headers.get('content-type')?.includes('application/json');
+                const body = isJson ? await res.json() : await res.text();
+                statusEl.innerHTML = `<span class="badge ${res.ok ? 'badge-success' : 'badge-error'}">${res.status} ${res.statusText}</span> (${dt} ms)`;
+                resultEl.innerText = isJson ? JSON.stringify(body, null, 2) : body;
+            } catch (err) {
+                statusEl.innerHTML = `<span class="badge badge-error">Failed</span> ${err.message}`;
+                resultEl.innerText = err.stack || err.message;
+            }
+        }
+
+        function previewImage() {
+            const input = document.getElementById('imageInput');
+            const preview = document.getElementById('imagePreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function uploadAndPredict() {
+            const input = document.getElementById('imageInput');
+            const statusEl = document.getElementById('predStatus');
+            const resultEl = document.getElementById('predResult');
+            
+            if (!input.files || !input.files[0]) {
+                statusEl.innerHTML = '<span class="badge badge-error">Error</span> Please choose an image first.';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+
+            statusEl.innerHTML = 'Executing prediction on model...';
+            const t0 = performance.now();
+            try {
+                const res = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const dt = (performance.now() - t0).toFixed(1);
+                const data = await res.json();
+                statusEl.innerHTML = `<span class="badge ${res.ok ? 'badge-success' : 'badge-error'}">${res.status} ${res.statusText}</span> Result: <strong>${data.class_name ? data.class_name.toUpperCase() : 'N/A'}</strong> (${(data.confidence * 100).toFixed(2)}%) in ${dt} ms`;
+                resultEl.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                statusEl.innerHTML = `<span class="badge badge-error">Failed</span> ${err.message}`;
+                resultEl.innerText = err.stack || err.message;
+            }
+        }
+    </script>
+</body>
+</html>"""
+
+
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["Service Health & Info"],
+    summary="Health Check Endpoint",
+)
 async def health_check():
     """Liveness & readiness health check endpoint for Kubernetes and monitoring probes."""
     try:
@@ -356,7 +605,10 @@ async def health_check():
     summary="Classify Image as Cat or Dog",
     description="Upload an image file (`.jpg`, `.png`, `.jpeg`) to receive binary classification results, probability distribution, and confidence level.",
 )
-async def predict_image(file: UploadFile = File(..., description="Image file (JPG or PNG) to classify"), request: Request = None):
+async def predict_image(
+    file: UploadFile = File(..., description="Image file (JPG or PNG) to classify"),
+    request: Request = None,
+):
     """
     Predict class of uploaded image
 
@@ -368,7 +620,9 @@ async def predict_image(file: UploadFile = File(..., description="Image file (JP
     """
     client_ip = request.client.host if request and request.client else "unknown"
     req_id = log_request(method="POST", path="/predict", client_ip=client_ip)
-    logger.info(f"➡️ [REQ-{req_id}] Incoming POST /predict from {client_ip} | File: {file.filename}")
+    logger.info(
+        f"➡️ [REQ-{req_id}] Incoming POST /predict from {client_ip} | File: {file.filename}"
+    )
 
     if model is None:
         record_error(error_type="model_not_loaded", endpoint="/predict")

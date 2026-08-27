@@ -16,8 +16,7 @@ import mlflow.pytorch
 from mlflow.tracking import MlflowClient
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - [%(levelname)s] - %(message)s"
+    level=logging.INFO, format="%(asctime)s - [%(levelname)s] - %(message)s"
 )
 logger = logging.getLogger("mlflow_push")
 
@@ -25,24 +24,27 @@ logger = logging.getLogger("mlflow_push")
 def get_model_instance(model_name: str, weights_path: str) -> nn.Module:
     """Build model architecture and load saved weights"""
     name = model_name.lower().strip()
-    
+
     if name == "resnet18":
         try:
             from torchvision.models import resnet18, ResNet18_Weights
+
             model = resnet18(weights=None)
         except Exception:
             model = models.resnet18(pretrained=False)
         model.fc = nn.Linear(model.fc.in_features, 2)
-        
+
     elif name == "mobilenet_v2":
         try:
             from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
+
             model = mobilenet_v2(weights=None)
         except Exception:
             model = models.mobilenet_v2(pretrained=False)
         model.classifier[1] = nn.Linear(model.classifier[1].in_features, 2)
-        
+
     elif name in ["simple_cnn", "cnn"]:
+
         class SimpleCNN(nn.Module):
             def __init__(self, num_classes: int = 2):
                 super().__init__()
@@ -93,9 +95,9 @@ def push_models_to_mlflow(
     """Log all trained models to MLflow tracking and register the best model"""
     logger.info(f"Connecting to MLflow Tracking Server at: {mlflow_uri}")
     mlflow.set_tracking_uri(mlflow_uri)
-    
+
     client = MlflowClient(tracking_uri=mlflow_uri)
-    
+
     # Ensure experiment exists
     exp = client.get_experiment_by_name(experiment_name)
     if exp is None:
@@ -103,7 +105,7 @@ def push_models_to_mlflow(
         exp_id = client.create_experiment(experiment_name)
     else:
         exp_id = exp.experiment_id
-    
+
     mlflow.set_experiment(experiment_name)
     logger.info(f"Active experiment '{experiment_name}' (ID: {exp_id})")
 
@@ -116,7 +118,7 @@ def push_models_to_mlflow(
 
     models_info = comparison_data.get("models", {})
     best_model_name = comparison_data.get("best_model", "resnet18")
-    
+
     model_definitions = [
         {
             "name": "resnet18",
@@ -157,13 +159,13 @@ def push_models_to_mlflow(
             logger.warning(f"File {pkl_path} not found, skipping {m_name}")
             continue
 
-        is_best = (m_name == best_model_name)
+        is_best = m_name == best_model_name
         run_name = f"gpu-{m_name}-production" if is_best else f"gpu-{m_name}"
 
         logger.info(f"\nLogging model '{m_name}' to MLFlow (Run: {run_name})...")
         with mlflow.start_run(run_name=run_name) as run:
             run_id = run.info.run_id
-            
+
             # Log params
             mlflow.log_param("model_name", m_name)
             mlflow.log_param("device", "cuda")
@@ -193,11 +195,11 @@ def push_models_to_mlflow(
             # Load model and log as MLflow PyTorch artifact
             torch_model = get_model_instance(m_name, str(pkl_path))
             dummy_input = torch.randn(1, 3, 224, 224)
-            
+
             mlflow.pytorch.log_model(
                 pytorch_model=torch_model,
                 artifact_path="model",
-                registered_model_name=None, # Register separately with explicit stage
+                registered_model_name=None,  # Register separately with explicit stage
             )
 
             # Log the raw .pkl file as well for direct fetchers
@@ -210,14 +212,18 @@ def push_models_to_mlflow(
                 if comparison_file.exists():
                     mlflow.log_artifact(str(comparison_file), artifact_path="")
 
-            logger.info(f"✅ Logged {m_name} (Run ID: {run_id}, Val Acc: {m['val_acc']}%)")
+            logger.info(
+                f"✅ Logged {m_name} (Run ID: {run_id}, Val Acc: {m['val_acc']}%)"
+            )
 
     # Version and Register Best Model in MLflow Model Registry
     if best_run_id:
         reg_name = "cats-dogs-best-model"
-        logger.info(f"\nRegistering model version for '{reg_name}' from run {best_run_id}...")
+        logger.info(
+            f"\nRegistering model version for '{reg_name}' from run {best_run_id}..."
+        )
         model_uri = f"runs:/{best_run_id}/model"
-        
+
         try:
             # Register model version
             model_version = mlflow.register_model(
@@ -229,9 +235,9 @@ def push_models_to_mlflow(
                     "device": "cuda",
                     "val_accuracy": f"{models_info.get(best_run_model_name, {}).get('val_accuracy', 99.60)}%",
                     "test_accuracy": f"{models_info.get(best_run_model_name, {}).get('test_accuracy', 97.20)}%",
-                }
+                },
             )
-            
+
             version_number = model_version.version
             logger.info(f"✅ Created Model Version: {reg_name} v{version_number}")
 
@@ -242,14 +248,16 @@ def push_models_to_mlflow(
                 stage="Production",
                 archive_existing_versions=True,
             )
-            
+
             # Update model version description
             client.update_model_version(
                 name=reg_name,
                 version=version_number,
                 description=f"GPU Trained Best Model: {best_run_model_name.upper()} with 99.60% Val Acc and 97.20% Test Acc on Cats vs Dogs classification.",
             )
-            logger.info(f"✅ Version {version_number} transitioned to 'Production' stage with versioning!")
+            logger.info(
+                f"✅ Version {version_number} transitioned to 'Production' stage with versioning!"
+            )
 
         except Exception as e:
             logger.error(f"Error registering model in registry: {e}")
