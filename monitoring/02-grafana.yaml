@@ -256,13 +256,13 @@ data:
         },
         {
           "id": 3,
-          "title": "Total Incoming Requests",
+          "title": "Prediction Requests (/predict)",
           "type": "stat",
           "gridPos": { "h": 5, "w": 4, "x": 8, "y": 1 },
           "targets": [
             {
               "datasource": "Prometheus",
-              "expr": "sum(inference_requests_total) or vector(0)",
+              "expr": "sum(inference_requests_total{endpoint=\"/predict\"}) or sum(inference_predictions_total) or vector(0)",
               "refId": "A"
             }
           ],
