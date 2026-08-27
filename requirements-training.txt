@@ -1,4 +1,6 @@
-# Core ML Libraries (Essential for training)
+# Core ML Libraries (CPU-only versions are much smaller)
+# CPU-only PyTorch: ~600MB instead of 2.5GB
+# Install with: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 torch==2.0.1
 torchvision==0.15.2
 numpy==1.24.3

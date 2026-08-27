@@ -3,18 +3,20 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (removed git - not needed in container)
 RUN apt-get update && apt-get install -y \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy training-specific requirements (excludes inference and dev dependencies)
 COPY requirements-training.txt .
 
 # Install Python dependencies with BuildKit cache mount
-# BuildKit will cache pip packages across builds
+# Using CPU-only PyTorch reduces image size from 5.4GB to ~1.5GB
+# --no-cache-dir saves space, remove .pyc files and __pycache__
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements-training.txt
+    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-training.txt && \
+    find /usr/local/lib/python*/site-packages -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/local/lib/python*/site-packages -name "*.pyc" -delete 2>/dev/null || true
 
 # Copy application code
 COPY src ./src

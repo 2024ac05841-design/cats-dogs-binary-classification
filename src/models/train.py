@@ -18,14 +18,21 @@ from ..data import CatsDogsDataset, get_preprocessing_transforms
 
 logger = logging.getLogger(__name__)
 
-# Configure MLflow - use environment variable if provided, otherwise use default
-experiment_name = os.getenv("MLFLOW_EXPERIMENT", "cats-dogs-classification")
-try:
-    mlflow.set_experiment(experiment_name)
-except Exception as e:
-    logger.warning(f"Could not set experiment '{experiment_name}': {e}. Creating new experiment.")
-    mlflow.create_experiment(experiment_name)
-    mlflow.set_experiment(experiment_name)
+
+def setup_mlflow_experiment():
+    """Setup MLFlow experiment - called at runtime instead of import time"""
+    experiment_name = os.getenv("MLFLOW_EXPERIMENT", "cats-dogs-classification")
+    try:
+        mlflow.set_experiment(experiment_name)
+        logger.info(f"Set MLFlow experiment to '{experiment_name}'")
+    except Exception as e:
+        logger.warning(f"Could not set MLFlow experiment '{experiment_name}': {e}")
+        try:
+            mlflow.create_experiment(experiment_name)
+            mlflow.set_experiment(experiment_name)
+            logger.info(f"Created and set MLFlow experiment '{experiment_name}'")
+        except Exception as e2:
+            logger.warning(f"Could not create MLFlow experiment: {e2}. Continuing without MLFlow.")
 
 
 class Trainer:
@@ -167,54 +174,76 @@ class Trainer:
             optimizer, mode="min", factor=0.5, patience=3, verbose=True
         )
 
-        # Start MLflow run
-        with mlflow.start_run(run_name=self.experiment_name):
-            mlflow.log_param("model", self.model_name)
-            mlflow.log_param("epochs", epochs)
-            mlflow.log_param("learning_rate", lr)
-            mlflow.log_param("batch_size", train_loader.batch_size)
+        # Helper function to log to MLFlow with error handling
+        def safe_mlflow_log(func, *args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logger.debug(f"MLFlow logging failed: {e}")
+                pass
+        
+        # Start MLflow run with error handling
+        try:
+            mlflow_run = mlflow.start_run(run_name=self.experiment_name)
+            mlflow_run.__enter__()
+            mlflow_available = True
+        except Exception as e:
+            logger.warning(f"Could not start MLFlow run: {e}. Training without MLFlow logging.")
+            mlflow_available = False
+        
+        if mlflow_available:
+            safe_mlflow_log(mlflow.log_param, "model", self.model_name)
+            safe_mlflow_log(mlflow.log_param, "epochs", epochs)
+            safe_mlflow_log(mlflow.log_param, "learning_rate", lr)
+            safe_mlflow_log(mlflow.log_param, "batch_size", train_loader.batch_size)
 
-            best_val_loss = float("inf")
-            best_model_path = None
+        best_val_loss = float("inf")
+        best_model_path = None
 
-            for epoch in range(epochs):
-                train_loss, train_acc = self.train_epoch(
-                    train_loader, optimizer, criterion
-                )
-                val_loss, val_acc = self.validate(val_loader, criterion)
+        for epoch in range(epochs):
+            train_loss, train_acc = self.train_epoch(
+                train_loader, optimizer, criterion
+            )
+            val_loss, val_acc = self.validate(val_loader, criterion)
 
-                # Update history
-                self.history["train_loss"].append(train_loss)
-                self.history["train_acc"].append(train_acc)
-                self.history["val_loss"].append(val_loss)
-                self.history["val_acc"].append(val_acc)
+            # Update history
+            self.history["train_loss"].append(train_loss)
+            self.history["train_acc"].append(train_acc)
+            self.history["val_loss"].append(val_loss)
+            self.history["val_acc"].append(val_acc)
 
-                # Log to MLflow
-                mlflow.log_metric("train_loss", train_loss, step=epoch)
-                mlflow.log_metric("train_acc", train_acc, step=epoch)
-                mlflow.log_metric("val_loss", val_loss, step=epoch)
-                mlflow.log_metric("val_acc", val_acc, step=epoch)
+            # Log to MLflow
+            safe_mlflow_log(mlflow.log_metric, "train_loss", train_loss, step=epoch)
+            safe_mlflow_log(mlflow.log_metric, "train_acc", train_acc, step=epoch)
+            safe_mlflow_log(mlflow.log_metric, "val_loss", val_loss, step=epoch)
+            safe_mlflow_log(mlflow.log_metric, "val_acc", val_acc, step=epoch)
 
-                logger.info(
-                    f"Epoch [{epoch+1}/{epochs}] "
-                    f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}% "
-                    f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%"
-                )
+            logger.info(
+                f"Epoch [{epoch+1}/{epochs}] "
+                f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}% "
+                f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%"
+            )
 
-                # Save best model
-                if val_loss < best_val_loss:
-                    best_val_loss = val_loss
-                    best_model_path = save_path
-                    self.save_model(save_path)
-                    logger.info(f"Saved best model to {save_path}")
+            # Save best model
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_model_path = save_path
+                self.save_model(save_path)
+                logger.info(f"Saved best model to {save_path}")
 
-                scheduler.step(val_loss)
+            scheduler.step(val_loss)
 
-            # Log final metrics and model
-            mlflow.log_metric("best_val_loss", best_val_loss)
-            mlflow.pytorch.log_model(self.model, "model")
-
-            return self.history
+        # Log final metrics and model
+        safe_mlflow_log(mlflow.log_metric, "best_val_loss", best_val_loss)
+        safe_mlflow_log(mlflow.pytorch.log_model, self.model, "model")
+        
+        if mlflow_available:
+            try:
+                mlflow.end_run()
+            except:
+                pass
+        
+        return self.history
 
     def save_model(self, path: str) -> None:
         """Save model to disk"""
@@ -311,6 +340,9 @@ def train_multiple_models(
         model_names = ["simple_cnn", "logistic_regression", "resnet18"]
 
     logging.basicConfig(level=logging.INFO)
+    
+    # Setup MLFlow at runtime instead of at import time
+    setup_mlflow_experiment()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info(f"Using device: {device}")

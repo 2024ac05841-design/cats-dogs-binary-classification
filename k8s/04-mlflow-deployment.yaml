@@ -1,4 +1,19 @@
 ---
+# MLFlow PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-data-pvc
+  namespace: cats-dogs-classification
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path  # Rancher Desktop default storage class
+
+---
 # MLFlow Deployment
 apiVersion: apps/v1
 kind: Deployment
@@ -7,7 +22,6 @@ metadata:
   namespace: cats-dogs-classification
   labels:
     app: mlflow
-    component: tracking
 spec:
   replicas: 1
   selector:
@@ -17,71 +31,69 @@ spec:
     metadata:
       labels:
         app: mlflow
-        component: tracking
     spec:
-      serviceAccountName: mlflow-account
       containers:
-      - name: mlflow-server
-        image: ghcr.io/mlflow/mlflow:v2.7.0
-        
-        command:
-        - mlflow
-        - server
-        - --backend-store-uri
-        - sqlite:////mlflow/artifacts/mlflow.db
-        - --default-artifact-root
-        - /mlflow/artifacts
-        - --host
-        - 0.0.0.0
-        - --port
-        - "5000"
-        
+      - name: mlflow
+        image: ghcr.io/mlflow/mlflow:v2.7.1
+        imagePullPolicy: Never
+        command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "file:///mlflow/mlruns"]
         ports:
         - containerPort: 5000
-          name: web
+          name: http
           protocol: TCP
-        
         env:
-        - name: PYTHONUNBUFFERED
-          value: "1"
-        
+        - name: MLFLOW_TRACKING_URI
+          value: "file:///mlflow/mlruns"
+        volumeMounts:
+        - name: mlflow-data
+          mountPath: /mlflow
         resources:
           requests:
-            cpu: 200m
-            memory: 512Mi
+            memory: "1Gi"
+            cpu: "200m"
           limits:
-            cpu: 1000m
-            memory: 2Gi
-        
+            memory: "3Gi"
+            cpu: "1000m"
         livenessProbe:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 120
-          periodSeconds: 20
-          timeoutSeconds: 10
-          failureThreshold: 3
-        
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        
-        volumeMounts:
-        - name: mlflow-storage
-          mountPath: /mlflow
-      
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
       volumes:
-      - name: mlflow-storage
+      - name: mlflow-data
         persistentVolumeClaim:
-          claimName: mlflow-artifacts-pvc
+          claimName: mlflow-data-pvc
 
 ---
-# MLFlow Service
+# MLFlow Service (ClusterIP - use port-forward for access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-service
+  namespace: cats-dogs-classification
+  labels:
+    app: mlflow
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+    protocol: TCP
+    name: http
+  selector:
+    app: mlflow
+
+---
+# Headless service for internal access
 apiVersion: v1
 kind: Service
 metadata:
@@ -95,42 +107,6 @@ spec:
   - port: 5000
     targetPort: 5000
     protocol: TCP
-    name: web
+    name: http
   selector:
     app: mlflow
-
----
-# ServiceAccount for MLFlow
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: mlflow-account
-  namespace: cats-dogs-classification
-
----
-# Role for MLFlow
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: mlflow-role
-  namespace: cats-dogs-classification
-rules:
-- apiGroups: [""]
-  resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch"]
-
----
-# RoleBinding for MLFlow
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: mlflow-rolebinding
-  namespace: cats-dogs-classification
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: mlflow-role
-subjects:
-- kind: ServiceAccount
-  name: mlflow-account
-  namespace: cats-dogs-classification
