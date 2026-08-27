@@ -847,6 +847,114 @@ data:
               }
             }
           }
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+          "id": 400,
+          "title": "📜 Live Inference Request & Response Log Records",
+          "type": "row"
+        },
+        {
+          "id": 9,
+          "title": "Recent Request / Response Audit Log Table",
+          "type": "table",
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 22 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "inference_log_entry == 1",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true,
+                  "__name__": true,
+                  "app": true,
+                  "instance": true,
+                  "job": true,
+                  "namespace": true,
+                  "pod_template_hash": true,
+                  "kubernetes_namespace": true,
+                  "kubernetes_pod_name": true
+                },
+                "indexByName": {
+                  "timestamp": 0,
+                  "request_id": 1,
+                  "client_ip": 2,
+                  "class_name": 3,
+                  "confidence_pct": 4,
+                  "latency_ms": 5,
+                  "model_name": 6,
+                  "status": 7
+                },
+                "renameByName": {
+                  "timestamp": "Time (UTC)",
+                  "request_id": "Request ID",
+                  "client_ip": "Client IP",
+                  "class_name": "Prediction",
+                  "confidence_pct": "Confidence",
+                  "latency_ms": "Total Latency",
+                  "model_name": "Active Model",
+                  "status": "Response Status"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Response Status" },
+                "properties": [
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-background"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "red", "value": null },
+                        { "color": "green", "value": 1 }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Prediction" },
+                "properties": [
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-text"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "blue", "value": null }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
         }
       ],
       "refresh": "5s",

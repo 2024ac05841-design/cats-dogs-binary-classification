@@ -136,6 +136,12 @@ if PROMETHEUS_AVAILABLE:
         "Latest prediction confidence percentage",
     )
 
+    INFERENCE_LOG_ENTRY = Gauge(
+        "inference_log_entry",
+        "Recent structured inference log events with detailed metadata",
+        ["request_id", "timestamp", "client_ip", "class_name", "confidence_pct", "latency_ms", "model_name", "status"],
+    )
+
 
 class MetricsCollector:
     """In-memory collector and stats accumulator"""
@@ -291,6 +297,35 @@ class MetricsCollector:
             self.recent_logs.append(entry)
             if len(self.recent_logs) > self.max_recent_logs:
                 self.recent_logs.pop(0)
+
+        if PROMETHEUS_AVAILABLE:
+            try:
+                req_id = str(entry.get("request_id", "N/A"))
+                ts = str(entry.get("timestamp", ""))
+                # Shorten timestamp for clean display: HH:MM:SS
+                if "T" in ts:
+                    ts_short = ts.split("T")[1][:8]
+                else:
+                    ts_short = ts[:8]
+                client_ip = str(entry.get("client_ip", "127.0.0.1"))
+                class_name = str(entry.get("class_name", entry.get("error_type", "UNKNOWN"))).upper()
+                conf_pct = f"{round(entry.get('confidence', 0.0) * 100, 2)}%" if "confidence" in entry else "N/A"
+                latency_str = f"{round(entry.get('latency_ms', 0.0), 1)} ms" if "latency_ms" in entry else "N/A"
+                model_name = str(entry.get("model_name", "resnet18"))
+                status = str(entry.get("status", "success")).upper()
+
+                INFERENCE_LOG_ENTRY.labels(
+                    request_id=req_id,
+                    timestamp=ts_short,
+                    client_ip=client_ip,
+                    class_name=class_name,
+                    confidence_pct=conf_pct,
+                    latency_ms=latency_str,
+                    model_name=model_name,
+                    status=status,
+                ).set(1.0)
+            except Exception:
+                pass
 
     def get_stats(self) -> Dict[str, Any]:
         uptime = (datetime.utcnow() - self.start_time).total_seconds()
