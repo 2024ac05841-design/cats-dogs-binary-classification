@@ -9,7 +9,7 @@ metadata:
     app: inference-service
     version: v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: inference-service

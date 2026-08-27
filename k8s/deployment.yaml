@@ -6,7 +6,7 @@ metadata:
     app: cats-dogs-classifier
     version: v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: cats-dogs-classifier
