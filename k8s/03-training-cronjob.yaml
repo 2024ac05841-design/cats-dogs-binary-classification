@@ -40,8 +40,8 @@ spec:
               python src/scripts/train.py \
                 --data-dir /data/processed \
                 --output-path /models \
-                --epochs 12 \
-                --batch-size 32 \
+                --epochs 8 \
+                --batch-size 256 \
                 --lr 0.001
             
             env:
@@ -57,10 +57,10 @@ spec:
             resources:
               requests:
                 cpu: 500m
-                memory: 2Gi
+                memory: 6Gi
               limits:
                 cpu: 2000m
-                memory: 4Gi
+                memory: 12Gi
             
             volumeMounts:
             - name: training-data
