@@ -7,7 +7,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: cats-dogs-classifier
     ports:
-      - "8000:8000"
+      - "9000:8000"
     environment:
       - MODEL_PATH=/app/models/model.pkl
       - PYTHONUNBUFFERED=1
