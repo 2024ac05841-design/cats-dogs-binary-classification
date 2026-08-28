@@ -655,7 +655,7 @@ async def predict_image(
         temp_path = f"temp_{req_id}_{file.filename}"
         file_content = await file.read()
         await file.close()  # ← KEY FIX: Close file handle immediately after reading
-        
+
         with open(temp_path, "wb") as f:
             f.write(file_content)
 
@@ -715,7 +715,9 @@ async def predict_image(
             try:
                 os.remove(temp_path)
             except Exception as cleanup_err:
-                logger.warning(f"Failed to clean up temp file {temp_path}: {cleanup_err}")
+                logger.warning(
+                    f"Failed to clean up temp file {temp_path}: {cleanup_err}"
+                )
 
 
 @app.get(
