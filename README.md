@@ -373,6 +373,7 @@ curl http://localhost:8000/info
 |-------|---------|--------------|
 | [![Swagger Endpoints](images/swagger-endpoints.png)](docs/02-m2-packaging.md#api-documentation--testing) | **API Documentation** - Interactive Swagger UI | • Complete endpoint listing<br/>• Request/response schemas<br/>• Try-it-out functionality<br/>• /health, /predict, /metrics, /logs |
 | [![Swagger Response](images/swagger-sample-dog-response.png)](docs/02-m2-packaging.md#api-documentation--testing) | **Prediction Example** - Dog classification (99.99% confidence) | • Dog image prediction<br/>• Per-class probabilities<br/>• HTTP 200 response<br/>• Curl command reference |
+| [![GHCR Packages](images/ghcr-packages.png)](docs/02-m2-packaging.md#containerization) | **Container Registry** - Published images on GHCR | • 2 published images<br/>• cats-dogs-classifier-inference<br/>• cats-dogs-classifier-training<br/>• Automatic versioning & tagging |
 
 ---
 
@@ -398,6 +399,7 @@ curl http://localhost:8000/info
 
    - Push Docker image to registry (Docker Hub, GHCR, etc.)
    - Supports Docker Hub via secrets
+   - Automatic push to GHCR on test success
 
 #### Run Tests Locally:
 
@@ -411,6 +413,13 @@ pytest tests/ -v
 # Run with coverage
 pytest tests/ --cov=src --cov-report=html
 ```
+
+#### 📸 GitHub Actions CI Pipeline Screenshots
+
+| Image | Purpose | Key Features |
+|-------|---------|---------------|
+| [![CI Pipeline Runs](images/ci-pipeline-runs.png)](docs/03-m3-ci-pipeline.md#automated-testing) | **Workflow Execution History** - 36 successful CI runs | • All workflow runs shown<br/>• CI Pipeline status: PASSED<br/>• Commit history visible<br/>• Automated on every push |
+| [![Build Job Details](images/ci-pipeline-build-test-image.png)](docs/03-m3-ci-pipeline.md#artifact-publishing) | **Build Job Execution** - Successful image build and push | • Test job: 3.11 Python<br/>• Docker build for both images<br/>• Tests passed before build<br/>• Pushed to GHCR registry |
 
 ### M4: CD Pipeline & Deployment
 
