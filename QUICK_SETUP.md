@@ -7,6 +7,7 @@ Deploy the complete MLOps pipeline on Rancher Desktop in minutes.
 ## 📋 Prerequisites
 
 ### **Required Software**
+
 - ✅ Rancher Desktop (v1.5+) - [Download](https://rancherdesktop.io/)
 - ✅ Docker CLI (included with Rancher Desktop)
 - ✅ kubectl (included with Rancher Desktop)
@@ -14,11 +15,13 @@ Deploy the complete MLOps pipeline on Rancher Desktop in minutes.
 - ✅ Python 3.11+ (for running locally before Docker)
 
 ### **System Requirements**
+
 - 8GB+ RAM (recommended)
 - 20GB+ disk space
 - Windows, macOS, or Linux
 
 ### **GitHub Access**
+
 - GitHub account with access to [cats-dogs-binary-classification](https://github.com/2024ac05841-design/cats-dogs-binary-classification)
 - Personal Access Token (for GHCR if needed)
 
@@ -27,12 +30,14 @@ Deploy the complete MLOps pipeline on Rancher Desktop in minutes.
 ## 🚀 Step 1: Setup Rancher Desktop
 
 ### **1.1 Install Rancher Desktop**
+
 ```bash
 # Download from https://rancherdesktop.io/
 # Install following the official guide for your OS
 ```
 
 ### **1.2 Enable Kubernetes**
+
 1. Open Rancher Desktop
 2. Go to **Settings** → **Kubernetes**
 3. Enable **Kubernetes** checkbox
@@ -41,6 +46,7 @@ Deploy the complete MLOps pipeline on Rancher Desktop in minutes.
 6. Wait for initialization (~2-3 minutes)
 
 ### **1.3 Verify Installation**
+
 ```bash
 # Check Rancher Desktop status
 kubectl cluster-info
@@ -51,6 +57,7 @@ kubectl cluster-info
 ```
 
 ### **1.4 Switch to Rancher Context**
+
 ```powershell
 # Windows PowerShell:
 # Rancher Desktop automatically sets context
@@ -80,6 +87,7 @@ git branch
 ## 🔧 Step 3: Prepare Kubernetes Namespace & Secrets
 
 ### **3.1 Create Namespace**
+
 ```bash
 # Create the namespace for the project
 kubectl create namespace cats-dogs-classification
@@ -89,6 +97,7 @@ kubectl get namespace
 ```
 
 ### **3.2 Create Docker Registry Secret (Optional - for private GHCR)**
+
 ```bash
 # If using private GHCR, create secret:
 kubectl create secret docker-registry ghcr-secret \
@@ -103,6 +112,7 @@ kubectl get secrets -n cats-dogs-classification
 ```
 
 ### **3.3 Create ConfigMap for Model Path (Optional)**
+
 ```bash
 # ConfigMap for model location
 kubectl create configmap model-config \
@@ -119,6 +129,7 @@ kubectl get configmap -n cats-dogs-classification
 ## 📦 Step 4: Deploy Services
 
 ### **4.1 Create Persistent Volumes (for model & logs)**
+
 ```bash
 # Apply PV configuration
 kubectl apply -f k8s/01-persistent-volumes.yaml
@@ -128,6 +139,7 @@ kubectl get pv
 ```
 
 ### **4.2 Deploy Inference Service**
+
 ```bash
 # Apply inference service deployment
 kubectl apply -f k8s/05-inference-deployment.yaml
@@ -140,6 +152,7 @@ kubectl rollout status deployment/inference-service \
 ```
 
 ### **4.3 Deploy MLflow Server (Optional but Recommended)**
+
 ```bash
 # Apply MLflow deployment
 kubectl apply -f k8s/04-mlflow-deployment.yaml
@@ -149,6 +162,7 @@ kubectl get pods -n cats-dogs-classification | grep mlflow
 ```
 
 ### **4.4 Deploy Prometheus (for metrics)**
+
 ```bash
 # Apply Prometheus deployment
 kubectl apply -f k8s/01-prometheus.yaml
@@ -158,6 +172,7 @@ kubectl get pods -n cats-dogs-classification | grep prometheus
 ```
 
 ### **4.5 Deploy Grafana (for dashboards)**
+
 ```bash
 # Apply Grafana deployment
 kubectl apply -f k8s/02-grafana.yaml
@@ -167,6 +182,7 @@ kubectl get pods -n cats-dogs-classification | grep grafana
 ```
 
 ### **4.6 Deploy Training CronJob (Optional)**
+
 ```bash
 # Apply training cronjob (runs on schedule)
 kubectl apply -f k8s/03-training-cronjob.yaml
@@ -202,6 +218,7 @@ kubectl get pv,pvc -n cats-dogs-classification
 ## 🌐 Step 6: Access Services
 
 ### **6.1 Inference Service**
+
 ```bash
 # Port forward to access API
 kubectl port-forward svc/inference-service 8000:8000 \
@@ -215,6 +232,7 @@ curl http://localhost:8000/health
 ```
 
 ### **6.2 MLflow Server**
+
 ```bash
 # Port forward MLflow
 kubectl port-forward svc/mlflow 5000:5000 \
@@ -225,6 +243,7 @@ kubectl port-forward svc/mlflow 5000:5000 \
 ```
 
 ### **6.3 Prometheus**
+
 ```bash
 # Port forward Prometheus
 kubectl port-forward svc/prometheus 9090:9090 \
@@ -235,6 +254,7 @@ kubectl port-forward svc/prometheus 9090:9090 \
 ```
 
 ### **6.4 Grafana**
+
 ```bash
 # Port forward Grafana
 kubectl port-forward svc/grafana 3000:3000 \
@@ -250,6 +270,7 @@ kubectl port-forward svc/grafana 3000:3000 \
 ## ✅ Step 7: Test Inference Service
 
 ### **7.1 Health Check**
+
 ```bash
 # Simple health check
 curl http://localhost:8000/health
@@ -259,6 +280,7 @@ curl http://localhost:8000/health
 ```
 
 ### **7.2 Make Prediction**
+
 ```bash
 # Upload a test image for prediction
 curl -X POST -F "file=@path/to/test_image.jpg" \
@@ -273,6 +295,7 @@ curl -X POST -F "file=@path/to/test_image.jpg" \
 ```
 
 ### **7.3 View Metrics**
+
 ```bash
 # Get Prometheus metrics
 curl http://localhost:8000/metrics
@@ -287,6 +310,7 @@ curl http://localhost:8000/metrics
 ## 🛑 Step 8: Cleanup & Tear Down
 
 ### **Remove All Services**
+
 ```bash
 # Delete entire namespace (removes all resources)
 kubectl delete namespace cats-dogs-classification
@@ -301,6 +325,7 @@ kubectl delete cronjob training-job -n cats-dogs-classification
 ```
 
 ### **Stop Port Forwarding**
+
 ```bash
 # Press Ctrl+C in terminal windows running port-forward
 # Or manually close the terminals
@@ -311,6 +336,7 @@ kubectl delete cronjob training-job -n cats-dogs-classification
 ## 🐛 Troubleshooting
 
 ### **Pods Not Starting**
+
 ```bash
 # Check pod logs for errors
 kubectl logs <pod-name> -n cats-dogs-classification
@@ -324,6 +350,7 @@ kubectl describe pod <pod-name> -n cats-dogs-classification
 ```
 
 ### **Image Pull Errors**
+
 ```bash
 # If using GHCR, verify secret is attached to deployment
 kubectl get deployment inference-service -o yaml \
@@ -336,6 +363,7 @@ kubectl patch serviceaccount default \
 ```
 
 ### **Port Forward Not Working**
+
 ```bash
 # Check if port is already in use
 # Windows PowerShell:
@@ -347,6 +375,7 @@ kubectl port-forward svc/inference-service 8001:8000 \
 ```
 
 ### **Persistent Volume Issues**
+
 ```bash
 # Check PV and PVC status
 kubectl get pv,pvc -n cats-dogs-classification
@@ -358,6 +387,7 @@ kubectl get storageclass
 ```
 
 ### **Out of Memory**
+
 ```bash
 # Check node resources
 kubectl top nodes
@@ -374,6 +404,7 @@ kubectl top pods -n cats-dogs-classification
 ## 📊 Monitoring Deployment
 
 ### **Real-Time Pod Monitoring**
+
 ```bash
 # Watch pods continuously
 kubectl get pods -n cats-dogs-classification --watch
@@ -383,6 +414,7 @@ kubectl top pods -n cats-dogs-classification
 ```
 
 ### **View Service Status**
+
 ```bash
 # Get detailed service information
 kubectl describe svc inference-service \
@@ -393,6 +425,7 @@ kubectl get svc -n cats-dogs-classification
 ```
 
 ### **Check Application Logs**
+
 ```bash
 # Inference service logs
 kubectl logs deployment/inference-service \
@@ -493,5 +526,3 @@ kubectl port-forward svc/inference-service 8000:8000 \
 ```
 
 ---
-
-**Ready to deploy? Start with Step 1! 🚀**
