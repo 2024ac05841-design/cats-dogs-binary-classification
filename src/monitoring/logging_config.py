@@ -45,6 +45,7 @@ class JSONFormatter(logging.Formatter):
 
 class FlushingRotatingFileHandler(RotatingFileHandler):
     """Custom file handler that flushes after every log"""
+
     def emit(self, record):
         super().emit(record)
         self.flush()

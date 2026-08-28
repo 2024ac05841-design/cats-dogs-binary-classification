@@ -293,7 +293,7 @@ This API is backed by **PyTorch**, managed via **MLFlow Model Registry**, and mo
     lifespan=lifespan,
 )
 
-# Enable CORS for all origins, methods, and headers (allow_credentials=False is required by browsers when origin is '*')
+# Enable CORS FIRST (before all other middleware) for all origins, methods, and headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -301,6 +301,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
+    max_age=3600,  # Cache preflight for 1 hour
 )
 
 
@@ -335,6 +336,22 @@ async def request_telemetry_middleware(request: Request, call_next):
             exc_info=True,
         )
         raise e
+
+
+# Exception handler for HTTP exceptions (ensures CORS headers are included)
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with proper CORS headers"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        },
+    )
 
 
 @app.get("/", include_in_schema=False)
@@ -632,11 +649,15 @@ async def predict_image(
         raise HTTPException(status_code=503, detail="Model not loaded")
 
     start_time = time.perf_counter()
+    temp_path = None
     try:
-        # Save uploaded file temporarily
+        # Save uploaded file temporarily and close the file handle
         temp_path = f"temp_{req_id}_{file.filename}"
+        file_content = await file.read()
+        await file.close()  # ← KEY FIX: Close file handle immediately after reading
+        
         with open(temp_path, "wb") as f:
-            f.write(await file.read())
+            f.write(file_content)
 
         # Preprocess and predict
         image_tensor = preprocess_image(temp_path)
@@ -645,10 +666,6 @@ async def predict_image(
         model_start = time.perf_counter()
         class_name, confidence, probs = predict(model, image_tensor, device)
         model_time = time.perf_counter() - model_start
-
-        # Clean up
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
 
         latency_ms = (time.perf_counter() - start_time) * 1000.0
         current_model_name = str(model_info.get("model_name", "resnet18"))
@@ -686,6 +703,13 @@ async def predict_image(
             probabilities=probs,
             message="Prediction successful",
         )
+    finally:
+        # Ensure temp file is cleaned up in all cases
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception as cleanup_err:
+                logger.warning(f"Failed to clean up temp file {temp_path}: {cleanup_err}")
 
     except Exception as e:
         record_request(method="POST", endpoint="/predict", status_code=400)
