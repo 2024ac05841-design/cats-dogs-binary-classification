@@ -2,6 +2,8 @@
 
 **🔗 GitHub Repository:** [2024ac05841-design/cats-dogs-binary-classification](https://github.com/2024ac05841-design/cats-dogs-binary-classification)
 
+**📹 Demo video and ML artifacts:** [MLOps Assgn 2](https://1drv.ms/f/c/c4c8345588741dcb/IgAdilPV1gJaRYRl2n_ejh1tAd1GkvxR_MQOA9-Y8ig44J8?e=aLEcui)
+
 A complete end-to-end MLOps pipeline for binary image classification (Cats vs Dogs) built for a pet adoption platform. This project demonstrates model development, containerization, CI/CD automation, and deployment practices.
 
 ## 📋 Project Overview
