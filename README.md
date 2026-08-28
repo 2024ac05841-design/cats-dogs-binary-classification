@@ -257,90 +257,6 @@ graph LR
 
 ---
 
-## 📸 Dashboard & Features Gallery
-
-### 🎯 Visual Proof of Working System
-
-All 15 screenshots showcase the complete end-to-end MLOps pipeline in production. Click on any section to see the detailed documentation.
-
----
-
-### 🔬 **M1: Model Development & Experiment Tracking**
-
-| Image | Purpose | Key Features |
-|-------|---------|--------------|
-| [![MLflow Experiments](images/mlflow-experiments.png)](docs/01-m1-model-development.md#mlflow-dashboard-screenshots) | **Experiment Tracking** - Compare multiple GPU training runs | • Multiple model runs<br/>• Accuracy progression: 59.60% → 99.60%<br/>• Hyperparameter comparison<br/>• Validation loss tracking |
-| [![MLflow Models](images/mlflow-models-versioning.png)](docs/01-m1-model-development.md#mlflow-dashboard-screenshots) | **Model Registry** - Version control and production promotion | • Registered model versioning<br/>• ResNet18 (99.6% val accuracy)<br/>• Production stage assignment<br/>• Model metadata tags |
-
----
-
-### 📡 **M2: Model Packaging & Containerization**
-
-| Image | Purpose | Key Features |
-|-------|---------|--------------|
-| [![Swagger Endpoints](images/swagger-endpoints.png)](docs/02-m2-packaging.md#api-documentation--testing) | **API Documentation** - Interactive Swagger UI | • Complete endpoint listing<br/>• Request/response schemas<br/>• Try-it-out functionality<br/>• /health, /predict, /metrics, /logs |
-| [![Swagger Response](images/swagger-sample-dog-response.png)](docs/02-m2-packaging.md#api-documentation--testing) | **Prediction Example** - Dog classification (99.99% confidence) | • Dog image prediction<br/>• Per-class probabilities<br/>• HTTP 200 response<br/>• Curl command reference |
-
----
-
-### ☸️ **M4: CD Pipeline & Kubernetes Deployment**
-
-| Image | Purpose | Key Features |
-|-------|---------|--------------|
-| [![Rancher Pods](images/rancher-pods.png)](docs/04-m4-cd-deployment.md#kubernetes-deployment-via-rancher) | **Pod Management** - All services running in namespace | • 5 running pods (1/1 ready)<br/>• inference-service replicas<br/>• MLflow + Prometheus<br/>• Grafana monitoring |
-| [![Rancher Deployments](images/rancher-deployments.png)](docs/04-m4-cd-deployment.md#kubernetes-deployment-via-rancher) | **Deployment Status** - GHCR image management | • Inference service (1/1 ready)<br/>• GHCR image pull status<br/>• Pod age tracking<br/>• Restart history |
-| [![Rancher CronJob](images/rancher-training-job.png)](docs/04-m4-cd-deployment.md#kubernetes-deployment-via-rancher) | **Automated Training** - Weekly model retraining | • Schedule: 2 AM Sunday<br/>• Training image from GHCR<br/>• src/gpu_training/train_gpu.py<br/>• Suspended/Active toggle |
-
----
-
-### 📊 **M5: Monitoring, Observability & Performance Tracking**
-
-#### **Prometheus Metrics Collection**
-
-| Image | Purpose | Key Features |
-|-------|---------|--------------|
-| [![Prometheus Discovery](images/prometheus-service-discovery.png)](docs/05-m5-monitoring.md#monitoring-dashboards--visualizations) | **Service Discovery** - K8s endpoint configuration | • Discovered targets config<br/>• Target labels mapping<br/>• kubernetes_sd_configs<br/>• Scrape configuration |
-| [![Prometheus Queries](images/prometheus-query-results.png)](docs/05-m5-monitoring.md#monitoring-dashboards--visualizations) | **Metrics Query** - Uptime monitoring | • Time series execution<br/>• up{job="inference-service"} = 1<br/>• Query visualization<br/>• Metric explorer |
-| [![Prometheus Health](images/prometheus-target-health.png)](docs/05-m5-monitoring.md#monitoring-dashboards--visualizations) | **Target Status** - All endpoints healthy | • 1/1 targets up<br/>• Endpoint: 10.42.0.2:8000/metrics<br/>• Scrape interval: 5s<br/>• Last scrape: Success |
-
-#### **Grafana Dashboards**
-
-| Image | Purpose | Key Features |
-|-------|---------|--------------|
-| [![Grafana Main](images/graphana-dashboards.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Dashboard Navigation** - Complete observability suite | • Dashboard list<br/>• Inference & Model Telemetry<br/>• Request & Response Audit<br/>• Create new dashboards |
-| [![Grafana Metrics 1](images/graphana-inference-model-metrics-1.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Model Performance Part 1** - Key KPIs and latency | • Active Model: ResNet18 v1<br/>• Predictions: 10 total<br/>• Avg Latency: 1.59s<br/>• Error Rate: 0 |
-| [![Grafana Metrics 2](images/graphana-inference-model-metrics-2.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Model Performance Part 2** - Prediction analysis | • Latency percentiles (p50-p99)<br/>• Predictions: 6 cats, 4 dogs<br/>• Confidence 90%-100%<br/>• Model forward pass time |
-| [![Grafana Audit 1](images/graphana-request-response-audit-1.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Request Audit Part 1** - Request tracking and errors | • Total Requests: 10<br/>• Successful: 10<br/>• Failed: 0<br/>• Request rate trend |
-| [![Grafana Audit 2](images/graphana-request-response-audit-2.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Request Audit Part 2** - Real-time monitoring | • Consistent req/s rate<br/>• 100% HTTP 200 success<br/>• Zero errors<br/>• Live prediction stream |
-
----
-
-### 📈 **Image Summary Statistics**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 15 Total Screenshots | 4 Modules | 5 Categories            │
-├─────────────────────────────────────────────────────────────┤
-│ MLflow Tracking         │ 2 images  │ Experiment comparison   │
-│ Swagger API             │ 2 images  │ Interactive docs        │
-│ Kubernetes/Rancher      │ 3 images  │ Cluster management      │
-│ Prometheus Metrics      │ 3 images  │ Time series collection  │
-│ Grafana Dashboards      │ 5 images  │ Real-time monitoring    │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-### ✅ **Gallery Benefits**
-
-- **Visual Proof** 📸 - Screenshots demonstrate the system actually works
-- **Metrics Visibility** 📊 - Real data from production dashboards
-- **Confidence Building** 💯 - Shows model performance and accuracy
-- **Operational Insight** 🔍 - Understand how each component functions
-- **Professional Documentation** 📚 - Production-ready evidence
-
----
-
 ### Prerequisites
 
 - Python 3.11+
@@ -393,7 +309,14 @@ python -m src.models.train
 python -c "from src.models import train_model; train_model(epochs=20, lr=0.001)"
 ```
 
-> **See the Gallery** for MLflow Experiment Tracking and Model Registry screenshots with detailed analysis.
+#### 📸 MLflow Dashboard Screenshots
+
+| Image | Purpose | Key Features |
+|-------|---------|--------------|
+| [![MLflow Experiments](images/mlflow-experiments.png)](docs/01-m1-model-development.md#mlflow-dashboard-screenshots) | **Experiment Tracking** - Compare multiple GPU training runs | • Multiple model runs<br/>• Accuracy progression: 59.60% → 99.60%<br/>• Hyperparameter comparison<br/>• Validation loss tracking |
+| [![MLflow Models](images/mlflow-models-versioning.png)](docs/01-m1-model-development.md#mlflow-dashboard-screenshots) | **Model Registry** - Version control and production promotion | • Registered model versioning<br/>• ResNet18 (99.6% val accuracy)<br/>• Production stage assignment<br/>• Model metadata tags |
+
+---
 
 ### M2: Model Packaging & Containerization
 
@@ -438,7 +361,14 @@ curl -F "file=@test_image.jpg" http://localhost:8000/predict
 curl http://localhost:8000/info
 ```
 
-> **See the Gallery** for Swagger API Documentation and Prediction Response screenshots with interactive examples.
+#### 📸 Swagger API & Docker Screenshots
+
+| Image | Purpose | Key Features |
+|-------|---------|--------------|
+| [![Swagger Endpoints](images/swagger-endpoints.png)](docs/02-m2-packaging.md#api-documentation--testing) | **API Documentation** - Interactive Swagger UI | • Complete endpoint listing<br/>• Request/response schemas<br/>• Try-it-out functionality<br/>• /health, /predict, /metrics, /logs |
+| [![Swagger Response](images/swagger-sample-dog-response.png)](docs/02-m2-packaging.md#api-documentation--testing) | **Prediction Example** - Dog classification (99.99% confidence) | • Dog image prediction<br/>• Per-class probabilities<br/>• HTTP 200 response<br/>• Curl command reference |
+
+---
 
 ### M3: CI Pipeline for Build, Test & Image Creation
 
@@ -526,6 +456,16 @@ kubectl get services
 kubectl port-forward svc/cats-dogs-classifier-service 8000:80
 ```
 
+#### 📸 Kubernetes & Rancher Deployment Screenshots
+
+| Image | Purpose | Key Features |
+|-------|---------|--------------|
+| [![Rancher Pods](images/rancher-pods.png)](docs/04-m4-cd-deployment.md#kubernetes-deployment-via-rancher) | **Pod Management** - All services running in namespace | • 5 running pods (1/1 ready)<br/>• inference-service replicas<br/>• MLflow + Prometheus<br/>• Grafana monitoring |
+| [![Rancher Deployments](images/rancher-deployments.png)](docs/04-m4-cd-deployment.md#kubernetes-deployment-via-rancher) | **Deployment Status** - GHCR image management | • Inference service (1/1 ready)<br/>• GHCR image pull status<br/>• Pod age tracking<br/>• Restart history |
+| [![Rancher CronJob](images/rancher-training-job.png)](docs/04-m4-cd-deployment.md#kubernetes-deployment-via-rancher) | **Automated Training** - Weekly model retraining | • Schedule: 2 AM Sunday<br/>• Training image from GHCR<br/>• src/gpu_training/train_gpu.py<br/>• Suspended/Active toggle |
+
+---
+
 ### M5: Monitoring, Logs & Final Submission
 
 #### Tasks:
@@ -554,7 +494,27 @@ cat logs/metrics.jsonl | jq .
 cat logs/predictions.jsonl | jq .
 ```
 
-> **See the Gallery** for Prometheus Service Discovery, Query Results, and Grafana Monitoring Dashboard screenshots with real-time metrics visualization.
+#### 📸 Prometheus & Grafana Monitoring Screenshots
+
+**Prometheus Metrics Collection:**
+
+| Image | Purpose | Key Features |
+|-------|---------|--------------|
+| [![Prometheus Discovery](images/prometheus-service-discovery.png)](docs/05-m5-monitoring.md#monitoring-dashboards--visualizations) | **Service Discovery** - K8s endpoint configuration | • Discovered targets config<br/>• Target labels mapping<br/>• kubernetes_sd_configs<br/>• Scrape configuration |
+| [![Prometheus Queries](images/prometheus-query-results.png)](docs/05-m5-monitoring.md#monitoring-dashboards--visualizations) | **Metrics Query** - Uptime monitoring | • Time series execution<br/>• up{job="inference-service"} = 1<br/>• Query visualization<br/>• Metric explorer |
+| [![Prometheus Health](images/prometheus-target-health.png)](docs/05-m5-monitoring.md#monitoring-dashboards--visualizations) | **Target Status** - All endpoints healthy | • 1/1 targets up<br/>• Endpoint: 10.42.0.2:8000/metrics<br/>• Scrape interval: 5s<br/>• Last scrape: Success |
+
+**Grafana Dashboards:**
+
+| Image | Purpose | Key Features |
+|-------|---------|--------------|
+| [![Grafana Main](images/graphana-dashboards.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Dashboard Navigation** - Complete observability suite | • Dashboard list<br/>• Inference & Model Telemetry<br/>• Request & Response Audit<br/>• Create new dashboards |
+| [![Grafana Metrics 1](images/graphana-inference-model-metrics-1.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Model Performance Part 1** - Key KPIs and latency | • Active Model: ResNet18 v1<br/>• Predictions: 10 total<br/>• Avg Latency: 1.59s<br/>• Error Rate: 0 |
+| [![Grafana Metrics 2](images/graphana-inference-model-metrics-2.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Model Performance Part 2** - Prediction analysis | • Latency percentiles (p50-p99)<br/>• Predictions: 6 cats, 4 dogs<br/>• Confidence 90%-100%<br/>• Model forward pass time |
+| [![Grafana Audit 1](images/graphana-request-response-audit-1.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Request Audit Part 1** - Request tracking and errors | • Total Requests: 10<br/>• Successful: 10<br/>• Failed: 0<br/>• Request rate trend |
+| [![Grafana Audit 2](images/graphana-request-response-audit-2.png)](docs/05-m5-monitoring.md#grafana-dashboard-visualizations) | **Request Audit Part 2** - Real-time monitoring | • Consistent req/s rate<br/>• 100% HTTP 200 success<br/>• Zero errors<br/>• Live prediction stream |
+
+---
 
 ## 🔄 Complete Workflow
 
