@@ -703,6 +703,12 @@ async def predict_image(
             probabilities=probs,
             message="Prediction successful",
         )
+    except Exception as e:
+        record_request(method="POST", endpoint="/predict", status_code=400)
+        record_error(error_type=type(e).__name__, endpoint="/predict")
+        log_error(str(e), error_type=type(e).__name__, request_id=req_id)
+        logger.error(f"❌ [REQ-{req_id}] 400 Bad Request: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
     finally:
         # Ensure temp file is cleaned up in all cases
         if temp_path and os.path.exists(temp_path):
@@ -710,13 +716,6 @@ async def predict_image(
                 os.remove(temp_path)
             except Exception as cleanup_err:
                 logger.warning(f"Failed to clean up temp file {temp_path}: {cleanup_err}")
-
-    except Exception as e:
-        record_request(method="POST", endpoint="/predict", status_code=400)
-        record_error(error_type=type(e).__name__, endpoint="/predict")
-        log_error(str(e), error_type=type(e).__name__, request_id=req_id)
-        logger.error(f"❌ [REQ-{req_id}] 400 Bad Request: {e}", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
 
 
 @app.get(

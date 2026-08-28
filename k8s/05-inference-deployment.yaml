@@ -26,8 +26,8 @@ spec:
       
       containers:
       - name: inference-service
-        image: cats-dogs-classifier-inference:latest
-        imagePullPolicy: Never
+        image: ghcr.io/2024ac05841-design/cats-dogs-classifier-inference:latest
+        imagePullPolicy: Always
         
         ports:
         - containerPort: 8000
