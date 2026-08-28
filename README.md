@@ -393,11 +393,7 @@ python -m src.models.train
 python -c "from src.models import train_model; train_model(epochs=20, lr=0.001)"
 ```
 
-#### 📸 Screenshot: MLflow Experiment Dashboard
-
-![MLflow Experiment Dashboard showing model comparison with parameters and metrics](screenshots/01-mlflow-dashboard.png)
-
-*MLflow UI displaying experiment runs, model parameters (learning_rate, batch_size, epochs), and tracked metrics (accuracy, loss curves)*
+> **See the Gallery** for MLflow Experiment Tracking and Model Registry screenshots with detailed analysis.
 
 ### M2: Model Packaging & Containerization
 
@@ -442,23 +438,7 @@ curl -F "file=@test_image.jpg" http://localhost:8000/predict
 curl http://localhost:8000/info
 ```
 
-#### 📸 Screenshot: FastAPI Swagger UI
-
-![FastAPI Swagger UI showing all available endpoints](screenshots/02-fastapi-swagger-ui.png)
-
-*Interactive API documentation with GET /health, POST /predict, GET /metrics endpoints and request/response schemas*
-
-#### 📸 Screenshot: Docker Image Successfully Built
-
-![Terminal output showing successful Docker image build](screenshots/03-docker-build-success.png)
-
-*Console output displaying successful `docker build` command completion with image tag and size*
-
-#### 📸 Screenshot: API Prediction Response
-
-![JSON response showing cat/dog prediction with confidence score](screenshots/04-api-prediction-response.png)
-
-*Sample JSON response with predicted class (cat/dog), confidence percentage, and processing timestamp*
+> **See the Gallery** for Swagger API Documentation and Prediction Response screenshots with interactive examples.
 
 ### M3: CI Pipeline for Build, Test & Image Creation
 
@@ -495,12 +475,6 @@ pytest tests/ -v
 # Run with coverage
 pytest tests/ --cov=src --cov-report=html
 ```
-
-#### 📸 Screenshot: GitHub Actions Workflow Running
-
-![GitHub Actions workflow showing all CI jobs executing with green checkmarks](screenshots/05-github-actions-workflow.png)
-
-*CI pipeline visualization displaying test job, build job, Docker image push steps with successful status indicators*
 
 ### M4: CD Pipeline & Deployment
 
@@ -552,12 +526,6 @@ kubectl get services
 kubectl port-forward svc/cats-dogs-classifier-service 8000:80
 ```
 
-#### 📸 Screenshot: Smoke Tests Output
-
-![Terminal showing all smoke tests passing with green checkmarks](screenshots/06-smoke-tests-success.png)
-
-*Post-deployment validation output showing health check, API response validation, and prediction accuracy tests all passing*
-
 ### M5: Monitoring, Logs & Final Submission
 
 #### Tasks:
@@ -586,17 +554,7 @@ cat logs/metrics.jsonl | jq .
 cat logs/predictions.jsonl | jq .
 ```
 
-#### 📸 Screenshot: Prometheus Metrics Dashboard
-
-![Prometheus dashboard showing request metrics and performance graphs](screenshots/07-prometheus-metrics.png)
-
-*Prometheus UI displaying request count, latency percentiles, prediction confidence scores, and error rates with time-series graphs*
-
-#### 📸 Screenshot: Grafana Monitoring Dashboard
-
-![Grafana dashboard with visual metrics, alerts, and model performance tracking](screenshots/08-grafana-dashboard.png)
-
-*Grafana panels showing latency trends, throughput, model accuracy, confidence distribution, and real-time monitoring alerts*
+> **See the Gallery** for Prometheus Service Discovery, Query Results, and Grafana Monitoring Dashboard screenshots with real-time metrics visualization.
 
 ## 🔄 Complete Workflow
 
