@@ -29,7 +29,7 @@ spec:
           
           containers:
           - name: training-job
-            image: ghcr.io/2024ac05841-design/cats-dogs-training:latest
+            image: ghcr.io/2024ac05841-design/cats-dogs-classifier-training:latest
             imagePullPolicy: Always
             
             command:
