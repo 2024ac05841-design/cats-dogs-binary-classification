@@ -6,16 +6,18 @@ A complete end-to-end MLOps pipeline for binary image classification (Cats vs Do
 
 This project implements a **5-module MLOps pipeline** with a focus on:
 
-- **M1**: Model Development & Experiment Tracking
-- **M2**: Model Packaging & Containerization  
-- **M3**: CI Pipeline (Build, Test, Image Creation)
-- **M4**: CD Pipeline & Deployment
-- **M5**: Monitoring, Logs & Model Performance Tracking
+- [**M1: Model Development & Experiment Tracking**](docs/01-m1-model-development.md)
+- [**M2: Model Packaging & Containerization**](docs/02-m2-packaging.md)
+- [**M3: CI Pipeline (Build, Test, Image Creation)**](docs/03-m3-ci-pipeline.md)
+- [**M4: CD Pipeline & Deployment**](docs/04-m4-cd-deployment.md)
+- [**M5: Monitoring, Logs & Model Performance Tracking**](docs/05-m5-monitoring.md)
 
 ### Use Case
+
 Binary image classification for a pet adoption platform using the Cats and Dogs dataset from Kaggle.
 
 **Dataset Specifications:**
+
 - Input size: 224x224 RGB images
 - Train/Val/Test split: 80%/10%/10%
 - Data augmentation enabled for better generalization
@@ -57,9 +59,206 @@ Binary image classification for a pet adoption platform using the Cats and Dogs 
 └── smoke_tests.sh              # Post-deployment smoke tests
 ```
 
-## 🚀 Quick Start
+## 🎯 MLOps Workflow Architecture
+
+### End-to-End Pipeline
+
+The complete MLOps journey from code commit to production monitoring. Shows how developer commits trigger automated testing, image building, registry push, and continuous deployment with health checks and observability.
+
+```mermaid
+graph LR
+    A["👨‍💻 Developer"] -->|git push| B["📦 GitHub Repository"]
+    B -->|webhook trigger| C["🔄 GitHub Actions CI"]
+    C -->|1. Checkout| D["📥 Code & Tests"]
+    D -->|2. Test| E{"✅ Tests Pass?"}
+    E -->|No| F["❌ Fail & Notify"]
+    E -->|Yes| G["🐳 Build Docker Images"]
+    G -->|3. Build| H["📸 Inference Image"]
+    G -->|3. Build| I["📸 Training Image"]
+    H -->|4. Test| J{"✅ Image OK?"}
+    I -->|4. Test| K{"✅ Image OK?"}
+    J -->|No| F
+    K -->|No| F
+    J -->|Yes| L["📤 Push to GHCR"]
+    K -->|Yes| L
+    L -->|trigger| M["🚀 CD Pipeline"]
+    M -->|Deploy| N["🐳 Docker Compose/K8s"]
+    N -->|Start Services| O["🔗 Inference Service"]
+    O -->|Health Check| P["✅ Running"]
+    P -->|Smoke Tests| Q{"✅ API OK?"}
+    Q -->|Yes| R["📊 Start Monitoring"]
+    Q -->|No| F
+    R -->|Request Logs| S["📝 Structured Logs"]
+    R -->|Metrics| T["📈 Prometheus"]
+    S -->|Analysis| U["🔍 Performance Tracking"]
+    T -->|Dashboards| U
+```
+
+### Data & Model Development Flow (M1)
+
+Modeling workflow showing raw data versioning with DVC, automated preprocessing pipeline stages, model training with MLflow experiment tracking, and artifact version control.
+
+```mermaid
+graph TD
+    A["📂 Raw Data<br/>data/raw/"] -->|DVC Track| B["📊 DVC Pipeline<br/>dvc.yaml"]
+    B -->|Stage 1: prepare| C["🔄 Preprocessing<br/>src/data/preprocessing.py"]
+    C -->|Output| D["📁 Processed Data<br/>data/processed/"]
+    D -->|Stage 2: train| E["🧠 Model Training<br/>src/models/train.py"]
+    E -->|Track with| F["📈 MLflow<br/>Run Parameters & Metrics"]
+    E -->|Outputs| G["💾 Best Model<br/>models/best_model.pkl"]
+    F -->|Dashboard| H["📊 MLflow UI<br/>http://localhost:5000"]
+    G -->|Version Control| I["📦 Git Commit<br/>Model Artifacts"]
+```
+
+### Containerization & API (M2)
+
+Shows how trained models are loaded into a FastAPI application, exposed through REST endpoints, and packaged into Docker containers for consistent deployment across environments.
+
+```mermaid
+graph LR
+    A["💾 Model<br/>best_model.pkl"] -->|Load| B["🚀 FastAPI App<br/>src/inference/app.py"]
+    B -->|Endpoints| C["🔗 GET /health"]
+    B -->|Endpoints| D["🔗 POST /predict"]
+    B -->|Endpoints| E["🔗 GET /metrics"]
+    C -->|Status| F["✅ Ready"]
+    D -->|Process| G["📸 Image Input"]
+    G -->|Inference| H["🤖 Model Output"]
+    H -->|Result| I["📊 Class & Confidence"]
+    E -->|Prometheus| J["📈 Metrics"]
+    B -->|Container| K["🐳 Docker Image"]
+    L["requirements-inference.txt"] -->|COPY| K
+    K -->|Registry| M["📦 GHCR<br/>ghcr.io/..."]
+```
+
+### CI/CD Pipeline Detailed (M3 & M4)
+
+Automated GitHub Actions workflow showing test execution, conditional build triggering using path filters, parallel image building, and automatic push to GHCR registry.
+
+```mermaid
+graph TD
+    A["📝 Code Change"] -->|git push| B["🔀 GitHub Main Branch"]
+    B -->|Trigger| C["⚙️ GitHub Actions Workflow"]
+  
+    C -->|Job 1| D["🧪 Test Job"]
+    D -->|Step 1| E["📦 Install Dependencies"]
+    E -->|Step 2| F["▶️ Run pytest"]
+    F -->|Step 3| G["📊 Coverage Report"]
+    G -->|Output| H{Tests Pass?}
+  
+    H -->|No| I["❌ FAILED"]
+    H -->|Yes| J["✅ PASSED"]
+  
+    J -->|Job 2| K["🔍 Detect Changes<br/>dorny/paths-filter"]
+    K -->|Check| L{"src/ or<br/>docker/ changed?"}
+  
+    L -->|No| M["⏭️ Skip Build"]
+    L -->|Yes| N["🔨 Build Job"]
+  
+    N -->|Step 1| O["🏗️ Setup BuildX"]
+    N -->|Step 2| P["🔐 Login to GHCR"]
+    N -->|Step 3| Q["📦 Build Inference Image"]
+    N -->|Step 3| R["📦 Build Training Image"]
+    Q -->|Step 4| S["✅ Test Image"]
+    R -->|Step 4| T["✅ Test Image"]
+    S -->|Step 5| U["📤 Push to GHCR"]
+    T -->|Step 5| U
+  
+    U -->|Tag| V["🏷️ ghcr.io/.../inference:sha-abc1234"]
+    U -->|Tag| W["🏷️ ghcr.io/.../training:sha-abc1234"]
+  
+    V -->|Trigger| X["🚀 CD Pipeline"]
+    W -->|Trigger| X
+    X -->|Deploy| Y["🐳 Docker Compose"]
+    Y -->|Start| Z["🔗 inference-service"]
+    Y -->|Start| AA["📊 mlflow"]
+    Z -->|Health Check| AB["✅ Ready"]
+    AA -->|Tracking| AB
+```
+
+### Deployment & Runtime (M4)
+
+Deployment options showing how images from GHCR are pulled and deployed either via Docker Compose (local) or Kubernetes (production) with replicas, persistent volumes, and monitoring integration.
+
+```mermaid
+graph TD
+    A["🐳 Docker Images<br/>GHCR Registry"] -->|Pull| B["📥 Local/K8s Environment"]
+  
+    B -->|docker-compose| C["🐳 Local Deployment"]
+    C -->|Service 1| D["🔗 Inference Service<br/>Port 8000"]
+    C -->|Service 2| E["📊 MLflow Server<br/>Port 5000"]
+    D -->|Volume| F["💾 Models Volume"]
+    D -->|Volume| G["📝 Logs Volume"]
+  
+    B -->|kubectl apply| H["☸️ Kubernetes Deployment"]
+    H -->|Namespace| I["cats-dogs-classification"]
+    I -->|Deployment| J["🔗 inference-service<br/>3 Replicas"]
+    I -->|StatefulSet| K["📊 MLflow"]
+    I -->|CronJob| L["⏰ Training Job<br/>Daily at 2 AM"]
+    I -->|PersistentVolume| M["💾 Models PV"]
+    I -->|Service| N["🔗 Service Discovery"]
+    I -->|Ingress| O["🌐 External Access"]
+  
+    J -->|Metrics| P["📈 Prometheus"]
+    J -->|Logs| Q["📝 Structured Logs"]
+    P -->|Dashboard| R["📊 Grafana"]
+```
+
+### Monitoring & Observability (M5)
+
+Complete observability stack capturing structured logs, Prometheus metrics collection, model drift detection, and Grafana dashboard visualization for production monitoring.
+
+```mermaid
+graph TD
+    A["🔗 Running Service<br/>inference-service"] -->|Request| B["📥 Incoming Request<br/>POST /predict"]
+  
+    B -->|Logging| C["📝 Request Logger"]
+    C -->|JSON Format| D["📄 logs/request_log.log"]
+    D -->|Analysis| E["📊 Log Analytics"]
+  
+    B -->|Processing| F["🤖 Model Prediction"]
+    F -->|Metrics| G["📈 Prometheus Metrics"]
+    G -->|Export| H["📊 /metrics Endpoint"]
+    H -->|Collection| I["💾 Prometheus DB"]
+    I -->|Query| J["📊 Grafana Dashboard"]
+  
+    B -->|Track| K["📊 Prediction Tracking"]
+    K -->|Store| L["📄 logs/predictions.jsonl"]
+    L -->|Monitor| M["🔍 Model Performance"]
+    M -->|Detect| N["⚠️ Model Drift"]
+    N -->|Alert| O["🔔 Performance Drop<br/>Trigger Retraining"]
+  
+    J -->|Display| P["📈 Real-time Metrics<br/>Latency, Throughput, Accuracy"]
+    J -->|Display| Q["📈 Model Info<br/>Version, Stage, Registry"]
+```
+
+### Data Flow in Production
+
+Real-time request handling showing image upload validation, preprocessing, model inference, asynchronous metrics collection, structured logging, and dashboard reporting.
+
+```mermaid
+graph LR
+    A["📸 User Upload<br/>Image File"] -->|HTTP POST| B["🔗 API Endpoint<br>/predict"]
+    B -->|Validate| C{"✅ Valid<br/>Image?"}
+    C -->|No| D["❌ Error Response"]
+    C -->|Yes| E["📦 Preprocess<br/>Resize, Normalize"]
+    E -->|Tensor| F["🤖 Model Inference<br/>Forward Pass"]
+    F -->|Output| G["📊 Softmax<br/>Probabilities"]
+    G -->|Format| H["📝 Response JSON<br/>class_name, confidence"]
+    H -->|HTTP 200| I["✅ Return to User"]
+  
+    F -->|Async| J["📊 Metrics Collection<br/>Latency, Confidence"]
+    J -->|Store| K["💾 metrics.jsonl"]
+  
+    B -->|Async| L["📝 Request Logging<br/>Request ID, Endpoint, Status"]
+    L -->|Store| M["💾 request_log.log"]
+  
+    I -->|Analysis| N["📈 Performance Dashboard<br/>Grafana/Prometheus"]
+```
+
+---
 
 ### Prerequisites
+
 - Python 3.11+
 - Docker & Rancher Desktop (for containerization)
 - Git & DVC (for version control)
@@ -85,20 +284,23 @@ pip install -r requirements.txt
 ### M1: Model Development & Experiment Tracking
 
 #### Tasks:
+
 1. **Data & Code Versioning**
+
    - Git for source code versioning
    - DVC for dataset versioning
-
 2. **Model Building**
+
    - SimpleCNN baseline model (custom implementation)
    - ResNet18 alternative model (transfer learning)
    - Save in PyTorch format (.pt)
-
 3. **Experiment Tracking**
+
    - MLflow integration for experiment tracking
    - Log parameters, metrics, and artifacts
 
 #### Run Model Training:
+
 ```bash
 # Using the training module
 python -m src.models.train
@@ -107,24 +309,33 @@ python -m src.models.train
 python -c "from src.models import train_model; train_model(epochs=20, lr=0.001)"
 ```
 
+#### 📸 Screenshot: MLflow Experiment Dashboard
+
+![MLflow Experiment Dashboard showing model comparison with parameters and metrics](screenshots/01-mlflow-dashboard.png)
+
+*MLflow UI displaying experiment runs, model parameters (learning_rate, batch_size, epochs), and tracked metrics (accuracy, loss curves)*
+
 ### M2: Model Packaging & Containerization
 
 #### Tasks:
+
 1. **Inference Service**
+
    - FastAPI REST API with two endpoints:
      - `GET /health` - Health check
      - `POST /predict` - Image classification
    - Additional endpoints: `GET /info`
-
 2. **Environment Specification**
+
    - `requirements.txt` with pinned versions
    - All dependencies documented
-
 3. **Containerization**
+
    - Dockerfile for reproducible environments
    - Test locally with Rancher Desktop
 
 #### Run Inference Service Locally:
+
 ```bash
 # Using FastAPI directly
 uvicorn src.inference.app:app --host 0.0.0.0 --port 8000
@@ -135,6 +346,7 @@ docker run -p 8000:8000 cats-dogs-classifier
 ```
 
 #### Test Predictions:
+
 ```bash
 # Health check
 curl http://localhost:8000/health
@@ -146,15 +358,35 @@ curl -F "file=@test_image.jpg" http://localhost:8000/predict
 curl http://localhost:8000/info
 ```
 
+#### 📸 Screenshot: FastAPI Swagger UI
+
+![FastAPI Swagger UI showing all available endpoints](screenshots/02-fastapi-swagger-ui.png)
+
+*Interactive API documentation with GET /health, POST /predict, GET /metrics endpoints and request/response schemas*
+
+#### 📸 Screenshot: Docker Image Successfully Built
+
+![Terminal output showing successful Docker image build](screenshots/03-docker-build-success.png)
+
+*Console output displaying successful `docker build` command completion with image tag and size*
+
+#### 📸 Screenshot: API Prediction Response
+
+![JSON response showing cat/dog prediction with confidence score](screenshots/04-api-prediction-response.png)
+
+*Sample JSON response with predicted class (cat/dog), confidence percentage, and processing timestamp*
+
 ### M3: CI Pipeline for Build, Test & Image Creation
 
 #### Tasks:
+
 1. **Automated Testing**
+
    - `tests/test_preprocessing.py` - Data preprocessing tests
    - `tests/test_inference.py` - Model inference tests
    - Run with: `pytest tests/ -v`
-
 2. **CI Setup (GitHub Actions)**
+
    - Workflow: `.github/workflows/ci.yml`
    - Steps:
      - Checkout repository
@@ -162,12 +394,13 @@ curl http://localhost:8000/info
      - Run unit tests with coverage
      - Build Docker image
      - Test Docker image locally
-
 3. **Artifact Publishing**
+
    - Push Docker image to registry (Docker Hub, GHCR, etc.)
    - Supports Docker Hub via secrets
 
 #### Run Tests Locally:
+
 ```bash
 # Install test dependencies
 pip install pytest pytest-cov
@@ -179,24 +412,33 @@ pytest tests/ -v
 pytest tests/ --cov=src --cov-report=html
 ```
 
+#### 📸 Screenshot: GitHub Actions Workflow Running
+
+![GitHub Actions workflow showing all CI jobs executing with green checkmarks](screenshots/05-github-actions-workflow.png)
+
+*CI pipeline visualization displaying test job, build job, Docker image push steps with successful status indicators*
+
 ### M4: CD Pipeline & Deployment
 
 #### Tasks:
+
 1. **Deployment Target**
+
    - Option A: **Docker Compose** (default - recommended for local)
    - Option B: **Kubernetes** (manifests provided)
-
 2. **CD/GitOps Flow**
+
    - Workflow: `.github/workflows/cd.yml`
    - Auto-deploy on main branch changes
    - Pull new image and restart service
-
 3. **Smoke Tests**
+
    - Post-deployment validation
    - Script: `smoke_tests.sh`
    - Validates health endpoint and predictions
 
 #### Deploy Locally with Docker Compose:
+
 ```bash
 # Start services
 docker-compose -f docker-compose.yml up -d
@@ -212,6 +454,7 @@ docker-compose down
 ```
 
 #### Deploy to Kubernetes (if available):
+
 ```bash
 # Apply manifests
 kubectl apply -f k8s/deployment.yaml
@@ -225,20 +468,29 @@ kubectl get services
 kubectl port-forward svc/cats-dogs-classifier-service 8000:80
 ```
 
+#### 📸 Screenshot: Smoke Tests Output
+
+![Terminal showing all smoke tests passing with green checkmarks](screenshots/06-smoke-tests-success.png)
+
+*Post-deployment validation output showing health check, API response validation, and prediction accuracy tests all passing*
+
 ### M5: Monitoring, Logs & Final Submission
 
 #### Tasks:
+
 1. **Basic Monitoring & Logging**
+
    - Request/response logging (JSON format)
    - Metrics tracking (request count, latency)
    - Logs stored in `logs/` directory
-
 2. **Model Performance Tracking**
+
    - Post-deployment prediction collection
    - Accuracy calculation from collected data
    - Data stored in `logs/predictions.jsonl`
 
 #### View Metrics:
+
 ```bash
 # Check app logs
 tail -f logs/app.log
@@ -250,9 +502,22 @@ cat logs/metrics.jsonl | jq .
 cat logs/predictions.jsonl | jq .
 ```
 
+#### 📸 Screenshot: Prometheus Metrics Dashboard
+
+![Prometheus dashboard showing request metrics and performance graphs](screenshots/07-prometheus-metrics.png)
+
+*Prometheus UI displaying request count, latency percentiles, prediction confidence scores, and error rates with time-series graphs*
+
+#### 📸 Screenshot: Grafana Monitoring Dashboard
+
+![Grafana dashboard with visual metrics, alerts, and model performance tracking](screenshots/08-grafana-dashboard.png)
+
+*Grafana panels showing latency trends, throughput, model accuracy, confidence distribution, and real-time monitoring alerts*
+
 ## 🔄 Complete Workflow
 
 ### 1. Data Preparation
+
 ```bash
 # Place raw Cats and Dogs dataset in data/raw/
 # Structure: data/raw/cats/, data/raw/dogs/
@@ -267,6 +532,7 @@ git commit -m "Add raw dataset"
 ```
 
 ### 2. Train Model
+
 ```bash
 # Activate virtual environment
 source .venv/bin/activate
@@ -279,6 +545,7 @@ python -m src.models.train
 ```
 
 ### 3. Build and Test Locally
+
 ```bash
 # Run unit tests
 pytest tests/ -v
@@ -291,6 +558,7 @@ docker run -p 8000:8000 cats-dogs-classifier:latest
 ```
 
 ### 4. Deploy Locally with Docker Compose
+
 ```bash
 # Start services
 docker-compose -f docker-compose.yml up -d
@@ -303,6 +571,7 @@ curl -F "file=@test_image.jpg" http://localhost:8000/predict
 ```
 
 ### 5. Push to Git & Trigger CI/CD
+
 ```bash
 # Add all files
 git add .
@@ -324,11 +593,13 @@ git push origin main
 ## 📊 Monitoring & Logging
 
 ### Log Files
+
 - `logs/app.log` - Application logs in JSON format
 - `logs/metrics.jsonl` - Metrics data (one JSON object per line)
 - `logs/predictions.jsonl` - Prediction records with true labels
 
 ### View Metrics Dashboard (Optional)
+
 ```bash
 # Start MLflow UI
 mlflow ui
@@ -339,6 +610,7 @@ mlflow ui
 ## 🛠️ Development
 
 ### Environment Variables
+
 ```bash
 # Set model path
 export MODEL_PATH=models/model.pkl
@@ -348,6 +620,7 @@ export LOG_LEVEL=INFO
 ```
 
 ### Add New Dependencies
+
 ```bash
 # Install new package
 pip install package_name
@@ -361,6 +634,7 @@ git commit -m "Add dependency: package_name"
 ```
 
 ### Run in Development Mode
+
 ```bash
 # Install dev dependencies
 pip install pytest pytest-cov black flake8
@@ -378,6 +652,7 @@ pytest tests/ --cov=src --cov-report=html
 ## 📋 Testing
 
 ### Unit Tests
+
 ```bash
 # Run all tests
 pytest tests/ -v
@@ -393,6 +668,7 @@ pytest tests/ --cov=src --cov-report=html
 ```
 
 ### Integration Tests (Manual)
+
 ```bash
 # Test API endpoints
 curl -X GET http://localhost:8000/health
@@ -403,6 +679,7 @@ curl -X POST -F "file=@test.jpg" http://localhost:8000/predict
 ## 🐳 Docker & Rancher Desktop
 
 ### Using Rancher Desktop
+
 1. Install Rancher Desktop from https://rancherdesktop.io/
 2. Enable Kubernetes (optional, for K8s deployment)
 3. Docker CLI works seamlessly with Rancher Desktop
@@ -428,6 +705,7 @@ curl http://localhost:8000/health
 ## 🚨 Troubleshooting
 
 ### Model Not Loading
+
 ```bash
 # Check if model file exists
 ls -la models/model.pkl
@@ -437,6 +715,7 @@ echo $MODEL_PATH
 ```
 
 ### Docker Build Fails
+
 ```bash
 # Check Docker is running
 docker ps
@@ -446,6 +725,7 @@ docker build --no-cache -f docker/Dockerfile -t cats-dogs-classifier .
 ```
 
 ### Service Not Responding
+
 ```bash
 # Check container logs
 docker logs <container_id>
@@ -458,6 +738,7 @@ docker restart <container_id>
 ```
 
 ### Tests Failing
+
 ```bash
 # Check Python version
 python --version  # Should be 3.11+
@@ -472,6 +753,7 @@ pytest --cache-clear tests/
 ## 📦 Deliverables
 
 ### Ready for Submission:
+
 1. ✅ Source code (all modules implemented)
 2. ✅ Configuration files (DVC, CI/CD, Docker, deployment manifests)
 3. ✅ Trained model artifacts (models/model.pkl)
@@ -482,6 +764,7 @@ pytest --cache-clear tests/
 8. ✅ Monitoring and logging (logs/, metrics/)
 
 ### To Create Final Submission:
+
 ```bash
 # Create zip file with all artifacts
 git archive --format zip HEAD > MLOps_Assignment_2.zip

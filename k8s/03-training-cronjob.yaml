@@ -29,8 +29,8 @@ spec:
           
           containers:
           - name: training-job
-            image: cats-dogs-trainer:latest
-            imagePullPolicy: Never
+            image: ghcr.io/2024ac05841-design/cats-dogs-training:latest
+            imagePullPolicy: Always
             
             command:
             - /bin/bash

@@ -680,12 +680,12 @@ async def predict_image(
             f"| Latency: {latency_ms:.1f}ms (Model: {model_time*1000:.1f}ms) | Probs: {probs}"
         )
 
-        return {
-            "class_name": class_name,
-            "confidence": float(confidence),
-            "probabilities": probs,
-            "message": "Prediction successful",
-        }
+        return PredictionResponse(
+            class_name=class_name,
+            confidence=float(confidence),
+            probabilities=probs,
+            message="Prediction successful",
+        )
 
     except Exception as e:
         record_request(method="POST", endpoint="/predict", status_code=400)

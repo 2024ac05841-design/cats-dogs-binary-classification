@@ -8,10 +8,11 @@ stages:
           cache: true
 
   train:
-    cmd: python src/scripts/train.py --epochs 20 --batch-size 32
+    cmd: python src/gpu_training/train_gpu.py --epochs 20 --batch-size 32 --lr 0.001
     deps:
       - src/models
       - src/data
+      - src/gpu_training
       - data/processed
     params:
       - train.epochs

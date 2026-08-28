@@ -26,8 +26,8 @@ spec:
       
       containers:
       - name: inference-service
-        image: cats-dogs-inference:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/2024ac05841-design/cats-dogs-inference:latest
+        imagePullPolicy: Always
         
         ports:
         - containerPort: 8000
