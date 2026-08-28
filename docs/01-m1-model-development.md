@@ -509,7 +509,33 @@ python -m src.gpu_training.train_gpu \
 
 ---
 
-## 📚 Key Technologies
+## � MLflow Dashboard Screenshots
+
+### Experiment Tracking & Comparison
+
+![MLflow Experiments](../images/mlflow-experiments.png)
+
+**Features shown:**
+- Multiple experiment runs with different hyperparameters
+- Metrics comparison across GPU training runs
+- Accuracy metrics: gpu-simple-cnn (59.60%), gpu-mobilenetv2 (99.20%), gpu-resnet18-production (99.60%)
+- Validation loss tracking and run filtering
+
+### Model Registry & Versioning
+
+![MLflow Model Versions](../images/mlflow-models-versioning.png)
+
+**Features shown:**
+- Registered model: "cats-dogs-best-model"
+- Version 1 in Production stage
+- Architecture: ResNet18
+- Performance: 99.6% val accuracy, 97.2% test accuracy
+- Tags: Framework (PyTorch), Device (cuda), Training date
+- Model built with GPU training: src/gpu_training/train_gpu.py
+
+---
+
+## �📚 Key Technologies
 
 | Technology             | Purpose                     | Configuration                 |
 | ---------------------- | --------------------------- | ----------------------------- |

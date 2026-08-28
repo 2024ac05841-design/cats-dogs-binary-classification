@@ -486,6 +486,42 @@ kubectl logs -f deployment/inference-service -n cats-dogs-classification
 kubectl get svc inference-service -n cats-dogs-classification
 ```
 
+### 📸 Kubernetes Cluster Management via Rancher
+
+#### Cluster Pods Overview
+
+![Rancher Pods](../images/rancher-pods.png)
+
+**Components shown:**
+- cats-dogs-training pod (GPU training job)
+- grafana pod (metrics visualization)
+- inference-service pod (3 replicas)
+- mlflow pod (model registry)
+- prometheus pod (metrics collection)
+- All pods running in cats-dogs-classification namespace
+
+#### Deployments & Rollouts
+
+![Rancher Deployments](../images/rancher-deployments.png)
+
+**Features shown:**
+- Inference service deployment with 1/1 ready replicas
+- MLflow and Prometheus deployments active
+- Image pull status from GHCR (ghcr.io/2024ac05841-design/*)
+- Pod age and restart tracking
+- Service discovery and load balancing
+
+#### Training CronJob Schedule
+
+![Rancher Training Job](../images/rancher-training-job.png)
+
+**Features shown:**
+- CronJob: cats-dogs-training
+- Schedule: 0 2 * * 0 (2 AM every Sunday)
+- Status: Suspended (can be activated)
+- Image: ghcr.io/2024ac05841-design/cats-dogs-classifier-training:latest
+- Training command: python src/gpu_training/train_gpu.py
+
 ### ✅ Implementation Status
 
 - ✅ Docker Compose file complete and tested

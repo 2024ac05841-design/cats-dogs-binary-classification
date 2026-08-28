@@ -529,6 +529,103 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 # http://localhost:3000 (Grafana)
 ```
 
+### 📸 Monitoring Dashboards & Visualizations
+
+#### Prometheus Target Health & Service Discovery
+
+![Prometheus Service Discovery](../images/prometheus-service-discovery.png)
+
+**Features shown:**
+- Service discovery targets: inference-service, mlflow, prometheus pods
+- Discovered labels and target labels configuration
+- Kubernetes service discovery (kubernetes_sd_configs)
+- All targets configured for Prometheus scraping
+
+#### Prometheus Query Results
+
+![Prometheus Queries](../images/prometheus-query-results.png)
+
+**Features shown:**
+- Time series query execution
+- Uptime metric: up{job="inference-service"} = 1
+- Query graph display with time range selection
+- Metrics exploration and filtering
+
+#### Prometheus Target Status
+
+![Prometheus Target Health](../images/prometheus-target-health.png)
+
+**Features shown:**
+- All targets healthy (1/1 up)
+- inference-service scraping at 10.42.0.2:8000
+- Metrics path: /metrics
+- Scrape interval: 5s
+- Last scrape status: Success
+
+### Grafana Dashboard Visualizations
+
+#### Main Dashboard Overview
+
+![Grafana Dashboards](../images/graphana-dashboards.png)
+
+**Features shown:**
+- Dashboard list and creation interface
+- "Inference & Model Telemetry" dashboard for real-time metrics
+- "Request & Response Log Audit" dashboard for tracing
+- Model status indicators and key KPIs
+
+#### Inference & Model Telemetry - Part 1
+
+![Inference Metrics Part 1](../images/graphana-inference-model-metrics-1.png)
+
+**Panels shown:**
+- Model Status & Key Performance Indicators
+  - Active Model: resnet18 (Production stage, Version 1)
+  - Prediction Rate: 10 total predictions
+  - Avg Latency: ~1.5s per inference
+  - Inference Errors: 0
+- Traffic & Request/Response Flow
+  - Request rate by endpoint: GET /health, GET /info, POST /predict
+  - Latency Percentiles (p50, p95, p99)
+  - HTTP 200 response success
+
+#### Inference & Model Telemetry - Part 2
+
+![Inference Metrics Part 2](../images/graphana-inference-model-metrics-2.png)
+
+**Panels shown:**
+- Latency, Execution Speed & Percentiles
+  - Percentile latencies: p50, p90, p95, p99
+  - Model forward pass execution time (ms)
+- Classification Distribution & Prediction Confidence
+  - Prediction breakdown: Cat (6 predictions), Dog (4 predictions)
+  - Confidence distribution: 90%-100% confidence range
+  - Majority of predictions with 99%+ confidence
+
+#### Request/Response Log Audit - Part 1
+
+![Request Audit Part 1](../images/graphana-request-response-audit-1.png)
+
+**Panels shown:**
+- Live Request/Response Audit Stream
+  - Recent Prediction Requests: 10 total
+  - Successful Predictions Log: 10 successful
+  - Failed/Errored Requests: 0
+- Real-Time Request Traffic & Error Rates
+  - Incoming Prediction Invocations (req/sec)
+  - Response Status Code Breakdown (HTTP 200 dominant)
+
+#### Request/Response Log Audit - Part 2
+
+![Request Audit Part 2](../images/graphana-request-response-audit-2.png)
+
+**Panels shown:**
+- Same metrics as Part 1
+  - Request rate steady at ~0.08 req/s average
+  - All responses returning HTTP 200 (0 errors)
+  - Consistent successful prediction stream
+- Real-time monitoring of inference service health
+
 ### ✅ Implementation Status
 
 - ✅ Prometheus metrics scraping configured

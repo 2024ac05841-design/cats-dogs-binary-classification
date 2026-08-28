@@ -194,6 +194,30 @@ async def recent_logs(limit: int = 10):
 | Request validation | Pydantic models           | ✅     |
 | Model loading      | MLflow + fallback to .pkl | ✅     |
 
+### 📸 API Documentation & Testing
+
+#### Swagger UI - Endpoint Documentation
+
+![Swagger Endpoints](../images/swagger-endpoints.png)
+
+**Features shown:**
+- Interactive Swagger UI at `/docs`
+- All endpoints documented with request/response schemas
+- Inference endpoint: POST /predict with image file upload
+- Health check, info, metrics, logs, and stats endpoints
+- Try-it-out functionality for testing
+
+#### Sample Prediction Response
+
+![Swagger Dog Response](../images/swagger-sample-dog-response.png)
+
+**Features shown:**
+- Dog image prediction: 99.99% confidence
+- Response includes class name, confidence, and per-class probabilities
+- Curl command shown for API testing
+- Server response: HTTP 200 with JSON payload
+- Interactive request/response inspection
+
 ### ✅ Implementation Status
 
 - ✅ FastAPI application running on port 8000
