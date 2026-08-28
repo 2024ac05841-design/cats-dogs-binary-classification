@@ -74,25 +74,6 @@ spec:
           claimName: mlflow-data-pvc
 
 ---
-# MLFlow Service (ClusterIP - use port-forward for access)
-apiVersion: v1
-kind: Service
-metadata:
-  name: mlflow-service
-  namespace: cats-dogs-classification
-  labels:
-    app: mlflow
-spec:
-  type: ClusterIP
-  ports:
-  - port: 5000
-    targetPort: 5000
-    protocol: TCP
-    name: http
-  selector:
-    app: mlflow
-
----
 # Headless service for internal access
 apiVersion: v1
 kind: Service

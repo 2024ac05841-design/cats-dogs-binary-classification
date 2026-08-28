@@ -43,6 +43,13 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_obj)
 
 
+class FlushingRotatingFileHandler(RotatingFileHandler):
+    """Custom file handler that flushes after every log"""
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
+
 def setup_logging(name: str = __name__, level: str = "INFO") -> logging.Logger:
     """
     Setup logger with file and console handlers
@@ -69,14 +76,18 @@ def setup_logging(name: str = __name__, level: str = "INFO") -> logging.Logger:
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
-    # File handler with rotation
-    file_handler = RotatingFileHandler(
+    # File handler with rotation (auto-flush)
+    file_handler = FlushingRotatingFileHandler(
         "logs/app.log", maxBytes=10 * 1024 * 1024, backupCount=5
     )
     file_handler.setLevel(getattr(logging, level))
     file_formatter = JSONFormatter()
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
+
+    # Ensure logs are written immediately (no buffering)
+    file_handler.flush()
+    logger.propagate = False  # Prevent duplicate logs
 
     return logger
 
