@@ -1,5 +1,7 @@
 # MLOps Pipeline: Cats vs Dogs Image Classification
 
+**🔗 GitHub Repository:** [2024ac05841-design/cats-dogs-binary-classification](https://github.com/2024ac05841-design/cats-dogs-binary-classification)
+
 A complete end-to-end MLOps pipeline for binary image classification (Cats vs Dogs) built for a pet adoption platform. This project demonstrates model development, containerization, CI/CD automation, and deployment practices.
 
 ## 📋 Project Overview
@@ -270,8 +272,10 @@ graph LR
 python -m venv .venv
 
 # Activate virtual environment
-# On Windows:
-.venv\Scripts\activate
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# On Windows (Command Prompt):
+.venv\Scripts\activate.bat
 # On macOS/Linux:
 source .venv/bin/activate
 
@@ -537,7 +541,11 @@ git commit -m "Add raw dataset"
 
 ```bash
 # Activate virtual environment
+# Linux/macOS:
 source .venv/bin/activate
+
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
 
 # Train model (MLflow automatically tracks experiments)
 python -m src.models.train
@@ -581,8 +589,8 @@ git add .
 # Commit changes
 git commit -m "Implement complete MLOps pipeline"
 
-# Push to main branch (triggers CI/CD)
-git push origin main
+# Push to Main branch (triggers CI/CD)
+git push origin Main
 
 # GitHub Actions will:
 # 1. Run tests
@@ -614,11 +622,13 @@ mlflow ui
 ### Environment Variables
 
 ```bash
-# Set model path
+# Linux/macOS (bash):
 export MODEL_PATH=models/model.pkl
-
-# Set logging level
 export LOG_LEVEL=INFO
+
+# Windows (PowerShell):
+$env:MODEL_PATH = "models/model.pkl"
+$env:LOG_LEVEL = "INFO"
 ```
 
 ### Add New Dependencies
@@ -695,6 +705,9 @@ docker run -p 8000:8000 cats-dogs-classifier
 
 # Access service
 curl http://localhost:8000/health
+
+# For Windows PowerShell, use:
+# docker run -p 8000:8000 cats-dogs-classifier
 ```
 
 ## 📝 Documentation
@@ -709,11 +722,17 @@ curl http://localhost:8000/health
 ### Model Not Loading
 
 ```bash
-# Check if model file exists
+# Check if model file exists (Linux/macOS)
 ls -la models/model.pkl
 
-# Verify model path in environment
+# On Windows PowerShell:
+Get-Item models/model.pkl
+
+# Verify model path in environment (Linux/macOS)
 echo $MODEL_PATH
+
+# On Windows PowerShell:
+$env:MODEL_PATH
 ```
 
 ### Docker Build Fails
@@ -732,8 +751,11 @@ docker build --no-cache -f docker/Dockerfile -t cats-dogs-classifier .
 # Check container logs
 docker logs <container_id>
 
-# Verify port is not in use
+# Verify port is not in use (Linux/macOS)
 netstat -tuln | grep 8000
+
+# On Windows PowerShell:
+netstat -ano | findstr :8000
 
 # Restart container
 docker restart <container_id>
