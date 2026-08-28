@@ -493,6 +493,7 @@ kubectl get svc inference-service -n cats-dogs-classification
 ![Rancher Pods](../images/rancher-pods.png)
 
 **Components shown:**
+
 - cats-dogs-training pod (GPU training job)
 - grafana pod (metrics visualization)
 - inference-service pod (3 replicas)
@@ -505,6 +506,7 @@ kubectl get svc inference-service -n cats-dogs-classification
 ![Rancher Deployments](../images/rancher-deployments.png)
 
 **Features shown:**
+
 - Inference service deployment with 1/1 ready replicas
 - MLflow and Prometheus deployments active
 - Image pull status from GHCR (ghcr.io/2024ac05841-design/*)
@@ -516,6 +518,7 @@ kubectl get svc inference-service -n cats-dogs-classification
 ![Rancher Training Job](../images/rancher-training-job.png)
 
 **Features shown:**
+
 - CronJob: cats-dogs-training
 - Schedule: 0 2 * * 0 (2 AM every Sunday)
 - Status: Suspended (can be activated)
@@ -827,8 +830,8 @@ bash smoke_tests.sh http://inference.example.com
 
 ✓ Test 5: Logs...
 [
-  {"timestamp": "2024-01-15T10:30:00", "method": "POST", ...},
-  {"timestamp": "2024-01-15T10:29:50", "method": "GET", ...}
+  {"timestamp": "2026-01-15T10:30:00", "method": "POST", ...},
+  {"timestamp": "2026-01-15T10:29:50", "method": "GET", ...}
 ]
   ✓ Logs endpoint working
 

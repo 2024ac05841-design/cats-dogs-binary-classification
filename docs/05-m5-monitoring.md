@@ -1,7 +1,5 @@
 # M5: Monitoring, Logs & Final Submission 📊
 
-
-
 ---
 
 ## 📋 Subtasks Overview
@@ -41,7 +39,7 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-    
+  
         # Add extra fields
         if hasattr(record, 'user_id'):
             log_data["user_id"] = record.user_id
@@ -53,11 +51,11 @@ class JSONFormatter(logging.Formatter):
             log_data["method"] = record.method
         if hasattr(record, 'response_time'):
             log_data["response_time_ms"] = record.response_time
-    
+  
         # Add exception info if present
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
-    
+  
         return json.dumps(log_data)
 
 # Configure logging
@@ -123,9 +121,9 @@ async def log_requests(request: Request, call_next):
 **logs/request_log.log:**
 
 ```json
-{"timestamp": "2024-01-15T10:30:00.123456", "level": "INFO", "logger": "inference", "message": "API Request", "request_id": "abc-123-def", "method": "GET", "endpoint": "/health", "status_code": 200, "response_time_ms": 2.5}
-{"timestamp": "2024-01-15T10:30:05.234567", "level": "INFO", "logger": "inference", "message": "API Request", "request_id": "xyz-789-uvw", "method": "POST", "endpoint": "/predict", "status_code": 200, "response_time_ms": 45.3}
-{"timestamp": "2024-01-15T10:30:10.345678", "level": "ERROR", "logger": "inference", "message": "Prediction failed", "request_id": "pqr-456-stu", "exception": "ValueError: Invalid image format"}
+{"timestamp": "22026-01-15T10:30:00.123456", "level": "INFO", "logger": "inference", "message": "API Request", "request_id": "abc-123-def", "method": "GET", "endpoint": "/health", "status_code": 200, "response_time_ms": 2.5}
+{"timestamp": "2026-01-15T10:30:05.234567", "level": "INFO", "logger": "inference", "message": "API Request", "request_id": "xyz-789-uvw", "method": "POST", "endpoint": "/predict", "status_code": 200, "response_time_ms": 45.3}
+{"timestamp": "2026-01-15T10:30:10.345678", "level": "ERROR", "logger": "inference", "message": "Prediction failed", "request_id": "pqr-456-stu", "exception": "ValueError: Invalid image format"}
 ```
 
 ### Log Analysis
@@ -142,15 +140,15 @@ def analyze_logs(log_file='logs/request_log.log'):
     with open(log_file) as f:
         for line in f:
             log = json.loads(line)
-        
+      
             endpoint = log.get("endpoint", "unknown")
             response_time = log.get("response_time_ms", 0)
             status_code = log.get("status_code", 0)
-        
+      
             stats = endpoint_stats[endpoint]
             stats["count"] += 1
             stats["total_time"] += response_time
-        
+      
             if status_code >= 400:
                 stats["errors"] += 1
   
@@ -158,7 +156,7 @@ def analyze_logs(log_file='logs/request_log.log'):
     for endpoint, stats in endpoint_stats.items():
         avg_time = stats["total_time"] / stats["count"]
         error_rate = stats["errors"] / stats["count"] * 100
-    
+  
         print(f"{endpoint}:")
         print(f"  Requests: {stats['count']}")
         print(f"  Avg time: {avg_time:.2f}ms")
@@ -228,12 +226,12 @@ class MetricsCollector:
   
     def log_prediction(self, class_name, confidence, latency_ms):
         """Log prediction metrics."""
-    
+  
         # Prometheus metrics
         request_count.labels(endpoint='/predict', method='POST').inc()
         inference_latency.observe(latency_ms / 1000)
         prediction_confidence.observe(confidence)
-    
+  
         # JSON metrics for analysis
         metric = {
             "timestamp": datetime.utcnow().isoformat(),
@@ -241,7 +239,7 @@ class MetricsCollector:
             "confidence": confidence,
             "latency_ms": latency_ms
         }
-    
+  
         with open(self.output_file, 'a') as f:
             f.write(json.dumps(metric) + '\n')
   
@@ -536,6 +534,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Prometheus Service Discovery](../images/prometheus-service-discovery.png)
 
 **Features shown:**
+
 - Service discovery targets: inference-service, mlflow, prometheus pods
 - Discovered labels and target labels configuration
 - Kubernetes service discovery (kubernetes_sd_configs)
@@ -546,6 +545,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Prometheus Queries](../images/prometheus-query-results.png)
 
 **Features shown:**
+
 - Time series query execution
 - Uptime metric: up{job="inference-service"} = 1
 - Query graph display with time range selection
@@ -556,6 +556,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Prometheus Target Health](../images/prometheus-target-health.png)
 
 **Features shown:**
+
 - All targets healthy (1/1 up)
 - inference-service scraping at 10.42.0.2:8000
 - Metrics path: /metrics
@@ -569,6 +570,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Grafana Dashboards](../images/graphana-dashboards.png)
 
 **Features shown:**
+
 - Dashboard list and creation interface
 - "Inference & Model Telemetry" dashboard for real-time metrics
 - "Request & Response Log Audit" dashboard for tracing
@@ -579,6 +581,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Inference Metrics Part 1](../images/graphana-inference-model-metrics-1.png)
 
 **Panels shown:**
+
 - Model Status & Key Performance Indicators
   - Active Model: resnet18 (Production stage, Version 1)
   - Prediction Rate: 10 total predictions
@@ -594,6 +597,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Inference Metrics Part 2](../images/graphana-inference-model-metrics-2.png)
 
 **Panels shown:**
+
 - Latency, Execution Speed & Percentiles
   - Percentile latencies: p50, p90, p95, p99
   - Model forward pass execution time (ms)
@@ -607,6 +611,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Request Audit Part 1](../images/graphana-request-response-audit-1.png)
 
 **Panels shown:**
+
 - Live Request/Response Audit Stream
   - Recent Prediction Requests: 10 total
   - Successful Predictions Log: 10 successful
@@ -620,6 +625,7 @@ kubectl port-forward svc/grafana-service 3000:3000 -n cats-dogs-classification
 ![Request Audit Part 2](../images/graphana-request-response-audit-2.png)
 
 **Panels shown:**
+
 - Same metrics as Part 1
   - Request rate steady at ~0.08 req/s average
   - All responses returning HTTP 200 (0 errors)

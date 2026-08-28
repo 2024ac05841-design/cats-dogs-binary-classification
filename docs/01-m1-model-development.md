@@ -152,7 +152,7 @@ class SimpleCNN(nn.Module):
         self.bn2 = nn.BatchNorm2d(64)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.bn3 = nn.BatchNorm2d(128)
-      
+    
         # Fully connected layers
         self.fc1 = nn.Linear(128 * 28 * 28, 256)
         self.fc2 = nn.Linear(256, num_classes)
@@ -345,7 +345,7 @@ with mlflow.start_run(run_name="SimpleCNN-v1"):
     for epoch in range(epochs):
         train_loss, train_acc = train_one_epoch()
         val_loss, val_acc = validate()
-      
+    
         # Log metrics
         mlflow.log_metrics({
             "train_loss": train_loss,
@@ -478,7 +478,7 @@ with open('models/model_comparison.json', 'r') as f:
     "model_size_mb": 89.5
   },
   "best_model": "ResNet18",
-  "timestamp": "2024-01-15T10:30:00"
+  "timestamp": "2026-01-15T10:30:00"
 }
 ```
 
@@ -516,6 +516,7 @@ python -m src.gpu_training.train_gpu \
 ![MLflow Experiments](../images/mlflow-experiments.png)
 
 **Features shown:**
+
 - Multiple experiment runs with different hyperparameters
 - Metrics comparison across GPU training runs
 - Accuracy metrics: gpu-simple-cnn (59.60%), gpu-mobilenetv2 (99.20%), gpu-resnet18-production (99.60%)
@@ -526,6 +527,7 @@ python -m src.gpu_training.train_gpu \
 ![MLflow Model Versions](../images/mlflow-models-versioning.png)
 
 **Features shown:**
+
 - Registered model: "cats-dogs-best-model"
 - Version 1 in Production stage
 - Architecture: ResNet18
@@ -535,7 +537,7 @@ python -m src.gpu_training.train_gpu \
 
 ---
 
-## �📚 Key Technologies
+## 🀽� Key Technologies
 
 | Technology             | Purpose                     | Configuration                 |
 | ---------------------- | --------------------------- | ----------------------------- |
