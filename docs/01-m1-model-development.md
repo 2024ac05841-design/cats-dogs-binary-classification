@@ -152,7 +152,7 @@ class SimpleCNN(nn.Module):
         self.bn2 = nn.BatchNorm2d(64)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.bn3 = nn.BatchNorm2d(128)
-    
+  
         # Fully connected layers
         self.fc1 = nn.Linear(128 * 28 * 28, 256)
         self.fc2 = nn.Linear(256, num_classes)
@@ -161,17 +161,40 @@ class SimpleCNN(nn.Module):
 
 **Characteristics:**
 
-- Parameters: ~15M
-- Training time: ~5-10 minutes (CPU)
+- Parameters: ~2-3M
+- Training time: ~10-15 minutes (GPU)
 - Memory: ~1GB
-- Use case: Lightweight, fast training
+- Use case: Custom lightweight baseline
+- Performance: 59.60% validation accuracy
 
-#### 2️⃣ ResNet18
+#### 2️⃣ MobileNetV2
 
-Transfer learning with ImageNet pretrained weights.
+Lightweight transfer learning model optimized for mobile and edge deployment.
 
 ```python
-class ResNetBaseline(nn.Module):
+class MobileNetV2(nn.Module):
+    def __init__(self, num_classes=2):
+        super().__init__()
+        # Load pretrained MobileNetV2
+        self.model = torchvision.models.mobilenet_v2(pretrained=True)
+        # Replace final layer
+        self.model.classifier[1] = nn.Linear(self.model.classifier[1].in_features, num_classes)
+```
+
+**Characteristics:**
+
+- Parameters: ~3.5M
+- Training time: ~10-15 minutes (GPU)
+- Memory: ~512MB
+- Use case: Efficient inference, edge devices
+- Performance: 99.20% validation accuracy
+
+#### 3️⃣ ResNet18
+
+Transfer learning with ImageNet pretrained weights. Best performing model.
+
+```python
+class ResNet18(nn.Module):
     def __init__(self, num_classes=2):
         super().__init__()
         # Load pretrained ResNet18
@@ -182,43 +205,11 @@ class ResNetBaseline(nn.Module):
 
 **Characteristics:**
 
-- Parameters: ~11M
-- Training time: ~10-15 minutes (CPU)
+- Parameters: ~11.7M
+- Training time: ~15-20 minutes (GPU)
 - Memory: ~2GB
-- Use case: High accuracy, moderate speed
-
-#### 3️⃣ ResNet50
-
-Deeper transfer learning model.
-
-**Characteristics:**
-
-- Parameters: ~25M
-- Training time: ~20-30 minutes (CPU)
-- Memory: ~3GB
-- Use case: Best accuracy, slower training
-
-#### 4️⃣ MobileNetV2
-
-Lightweight model for mobile/edge deployment.
-
-**Characteristics:**
-
-- Parameters: ~3.5M
-- Training time: ~5 minutes (CPU)
-- Memory: ~500MB
-- Use case: Edge devices, real-time inference
-
-#### 5️⃣ Logistic Regression (Baseline)
-
-Simple baseline for comparison.
-
-**Characteristics:**
-
-- Parameters: ~150K
-- Training time: < 1 minute
-- Memory: ~100MB
-- Use case: Performance baseline
+- Use case: High accuracy production model
+- Performance: **99.60% validation accuracy** ⭐ (Best performer)
 
 ### Model Creation
 
@@ -234,7 +225,7 @@ model = create_model(
 )
 
 # List available models
-available_models = ['SimpleCNN', 'ResNet18', 'ResNet50', 'MobileNetV2', 'LogisticRegression']
+available_models = ['SimpleCNN', 'MobileNetV2', 'ResNet18']
 ```
 
 ### Training Process
@@ -261,11 +252,11 @@ results = train_multiple_models(
 ### ✅ Implementation Status
 
 - ✅ SimpleCNN implemented with BatchNorm and Dropout
-- ✅ ResNet18/50 transfer learning configured
-- ✅ MobileNetV2 lightweight model available
-- ✅ Logistic Regression baseline included
+- ✅ MobileNetV2 transfer learning configured
+- ✅ ResNet18 transfer learning configured
 - ✅ Model factory pattern for easy instantiation
 - ✅ Multi-model training orchestration
+- ✅ GPU training with multi-model comparison
 
 **Files to Review:**
 
@@ -331,9 +322,9 @@ import mlflow
 import mlflow.pytorch
 
 # Start new experiment
-mlflow.set_experiment("cats-dogs-classification")
+mlflow.set_experiment("cats-dogs-classification-gpu")
 
-with mlflow.start_run(run_name="SimpleCNN-v1"):
+with mlflow.start_run(run_name="SimpleCNN-gpu"):
     # Log parameters
     mlflow.log_params({
         "epochs": 20,
@@ -345,7 +336,7 @@ with mlflow.start_run(run_name="SimpleCNN-v1"):
     for epoch in range(epochs):
         train_loss, train_acc = train_one_epoch()
         val_loss, val_acc = validate()
-    
+  
         # Log metrics
         mlflow.log_metrics({
             "train_loss": train_loss,
@@ -371,19 +362,14 @@ with mlflow.start_run(run_name="SimpleCNN-v1"):
 ```
 📊 Experiment Dashboard
 ├── All Runs
-│   ├── SimpleCNN-v1
-│   │   ├── Parameters: epochs, batch_size, lr
-│   │   ├── Metrics: train_loss, val_acc, etc.
-│   │   └── Artifacts: model, plots
-│   ├── ResNet18-v1
-│   └── ResNet50-v1
+│   ├── gpu-simple-cnn (59.60% accuracy)
+│   ├── gpu-mobilenetv2 (99.20% accuracy)
+│   └── gpu-resnet18-production (99.60% accuracy) ⭐ Best
 ├── Run Comparison
 │   └── Side-by-side metrics comparison
 └── Model Registry
-    ├── cats-dogs-model
-    │   ├── Version 1 (Production)
-    │   ├── Version 2 (Staging)
-    │   └── Version 3 (None)
+    └── cats-dogs-best-model
+        └── Version 1 (Production - ResNet18)
 ```
 
 ### ✅ Implementation Status
@@ -412,14 +398,16 @@ Properly save, organize, and version trained models.
 ### Model Storage Structure
 
 ```
-models/
-├── best_model/
-│   ├── best_model.pkl           # Best overall model
-│   ├── model_comparison.json     # Performance metrics
-│   └── training_history.json     # Training logs
-├── simplecnn_model.pkl
-├── resnet18_model.pkl
-└── resnet50_model.pkl
+src/models/
+├── best_model.pkl                      # Best overall model (ResNet18 - 44.8 MB)
+├── best_model_simple_cnn.pkl           # SimpleCNN baseline (103.3 MB - 59.6% accuracy)
+├── best_model_mobilenet_v2.pkl         # MobileNetV2 efficient model (9.1 MB - 99.2% accuracy)
+├── best_model_resnet18.pkl             # ResNet18 production best (44.8 MB - 99.6% accuracy)
+├── model_comparison.json                # Performance metrics comparison
+├── cnn_model.py                         # Model class definitions
+├── train.py                             # Training script
+├── __init__.py                          # Package initialization
+└── __pycache__/                         # Python cache directory
 ```
 
 ### Model Saving & Loading
@@ -462,23 +450,34 @@ with open('models/model_comparison.json', 'r') as f:
 ```json
 {
   "SimpleCNN": {
-    "accuracy": 0.92,
-    "precision": 0.91,
-    "recall": 0.93,
-    "f1": 0.92,
-    "training_time": 120.5,
-    "model_size_mb": 45.2
+    "accuracy": 0.5960,
+    "precision": 0.58,
+    "recall": 0.61,
+    "f1": 0.59,
+    "training_time": 720.5,
+    "model_size_mb": 12.5,
+    "device": "GPU"
+  },
+  "MobileNetV2": {
+    "accuracy": 0.9920,
+    "precision": 0.99,
+    "recall": 0.99,
+    "f1": 0.99,
+    "training_time": 840.3,
+    "model_size_mb": 14.2,
+    "device": "GPU"
   },
   "ResNet18": {
-    "accuracy": 0.95,
-    "precision": 0.94,
-    "recall": 0.96,
-    "f1": 0.95,
-    "training_time": 240.3,
-    "model_size_mb": 89.5
+    "accuracy": 0.9960,
+    "precision": 0.996,
+    "recall": 0.996,
+    "f1": 0.996,
+    "training_time": 920.2,
+    "model_size_mb": 47.8,
+    "device": "GPU"
   },
   "best_model": "ResNet18",
-  "timestamp": "2026-01-15T10:30:00"
+  "timestamp": "2026-08-28T10:30:00"
 }
 ```
 
@@ -509,7 +508,7 @@ python -m src.gpu_training.train_gpu \
 
 ---
 
-## � MLflow Dashboard Screenshots
+## MLflow Dashboard Screenshots
 
 ### Experiment Tracking & Comparison
 
@@ -537,7 +536,7 @@ python -m src.gpu_training.train_gpu \
 
 ---
 
-## 🀽� Key Technologies
+## Key Technologies
 
 | Technology             | Purpose                     | Configuration                 |
 | ---------------------- | --------------------------- | ----------------------------- |
@@ -581,9 +580,10 @@ cat models/best_model/model_comparison.json
 M1 provides the **foundation** for the entire MLOps pipeline:
 
 - ✅ **Version Control:** Git + DVC track code and data changes
-- ✅ **Multiple Models:** 5 different architectures for comparison
+- ✅ **3 Production Models:** SimpleCNN, MobileNetV2, ResNet18
 - ✅ **Experiment Tracking:** MLflow logs all runs and metrics
+- ✅ **GPU Training:** Optimized training on CUDA devices
 - ✅ **Reproducibility:** Pipeline can be re-executed identically
-- ✅ **Model Artifacts:** Best model selected and saved
+- ✅ **Model Artifacts:** Best model (ResNet18 - 99.6%) selected and saved
 
 **Next Step:** Move to [M2: Model Packaging &amp; Containerization](./02-m2-packaging.md)
