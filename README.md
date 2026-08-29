@@ -785,30 +785,7 @@ pip install --upgrade -r requirements.txt
 pytest --cache-clear tests/
 ```
 
-## 📦 Deliverables
-
-### Ready for Submission:
-
-1. ✅ Source code (all modules implemented)
-2. ✅ Configuration files (DVC, CI/CD, Docker, deployment manifests)
-3. ✅ Trained model artifacts (models/model.pkl)
-4. ✅ Unit tests (test_preprocessing.py, test_inference.py)
-5. ✅ Docker container image (Dockerfile)
-6. ✅ CI/CD workflows (GitHub Actions)
-7. ✅ Deployment manifests (Docker Compose & Kubernetes)
-8. ✅ Monitoring and logging (logs/, metrics/)
-
-### To Create Final Submission:
-
-```bash
-# Create zip file with all artifacts
-git archive --format zip HEAD > MLOps_Assignment_2.zip
-
-# OR manually:
-zip -r MLOps_Assignment_2.zip . -x ".git/*" ".venv/*" "__pycache__/*" "mlruns/*" "logs/*"
-```
-
-## 🔗 References
+## References
 
 - [PyTorch Documentation](https://pytorch.org/)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
